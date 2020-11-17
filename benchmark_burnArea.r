@@ -31,7 +31,7 @@ annual_average_NME <- function(mod, obs) {
     mod = openMod(dir, mod, varName, years, TRUE) * modScale
     
     obs = brick(obs)
-    obs = obs[[obslayers]]
+    obs = obs[[obsLayers]]
     obs = mean(obs) * obsScale
     obs = raster::resample(obs, mod[[1]])
     obs[is.na(mod)] = NaN
