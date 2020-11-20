@@ -2,16 +2,25 @@ source("libs/PolarConcentrationAndPhase.r")
 library(plotrix)
 
 phaseDiff <- function(x, mn = NULL) {
+    
     if (is.null(mn)) {
         if (is.na(x)) return(NA)
-    } else {
-        if (is.na(x) || is.na(mn)) return(NA)
+    } else {        
         x = x - mn
     }
-    if (abs(x) <= 6) return(x)
-    if (x <(-6)) return(x+12)
-    if (x >  6 ) return(x-12)
+    test = x < (-6)
+    x[test] = x[test] + 12
+
+    test = x > 6
+    x[test] = x[test] - 12
+    return(x)
+    #if (abs(x) <= 6) return(x)
+    #if (x <(-6)) return(x+12)
+    #if (x >  6 ) return(x-12)
 }
+
+
+
 plotConPhase <- function(r, let = c('', ''), addLegend = FALSE,
                          phase_colsi = phase_cols,
                          conc_colsi = conc_cols,

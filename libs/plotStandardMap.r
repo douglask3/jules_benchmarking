@@ -8,7 +8,12 @@ plotStandardMap <- function(x, txt = '', limits, cols, e = NULL, recrop_e = TRUE
     mask = raster('data/seamask.nc')
     mask = raster::resample(mask, x)
     x[mask != 2] = NaN
-    if(is.null(e) && nlayers(x) > 1) e = sd.raster(x)
+    if(is.null(e) && nlayers(x) > 1) {
+        if (nlayers(x) == 2) {
+            e = x[[2]]
+            x = x[[1]]
+        } else e = sd.raster(x)
+    }
     if(!is.null(e)) e[mask != 2] = NaN
     
     FUN <- function(...) {
