@@ -316,7 +316,7 @@ annual_average_NME <- function(mods, obss, fname, cols, limits, dcols, dlimits,
     }
     mods_switch = lapply(1:2, function(i) lapply(mods, function(m) m[[i]]))
     mapply(plotMod, mods_switch, mods_names)
-    dev.off()
+    dev.off.gitWatermark()
     NMEout <- function(mod, obs) {
         
         scores = FUN( obs, mod[[1]])
@@ -380,8 +380,6 @@ score_cn = annual_average_NME(mods, obss, 'figs/burnt_area_cn.png',
 score_md = annual_average_NME(mods, obss, 'figs/burnt_area_md.png', 
                               cols_modal, limits_modal, dcols_modal, dlimits_modal,
                               FALSE, FALSE, FALSE, TRUE, layer = 3)
-
-
 
 out = mapply(function(i, j) cbind(j, rownames(i), round(i,2)),
              list(score_aa, score_tC, score_ph, score_cn, score_md),
