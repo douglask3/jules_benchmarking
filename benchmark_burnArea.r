@@ -243,6 +243,7 @@ openMod <- function(mod, dir, varName, years, modScale, ..., layer = NULL) {
         writeRaster(dat, file = tempFile, overwrite = TRUE)
     }
     if (!is.null(layer)) dat = dat[[layer]]
+    if (nlayers(dat) == 1) dat = dat[[1]]
     return(dat)
 }
 
@@ -265,7 +266,7 @@ openObs <- function(obs, Layers, scale, modEG, ..., layer = NULL) {
         writeRaster(obs, file = tempFile, overwrite = TRUE)
     }
     if (!is.null(layer)) obs = obs[[layer]]
-
+    if (nlayers(obs) == 1) obs = obs[[1]]
     return(obs)
 }
 
@@ -315,7 +316,7 @@ annual_average_NME <- function(mods, obss, fname, cols, limits, dcols, dlimits,
             plotFun(diffFUN(md[[1]], obs), '', cols = dcols, limits = dlimits)
         mapply(plotDiff, obss, mod)
         
-        legendFun(dcols, dlimits, dat = mod[[1]][[1]]-obss[[1]], oneSideLabels = FALSE,
+        legendFun(dcols, dlimits, dat = diffFUN(mod[[1]][[1]],obss[[1]]), oneSideLabels = FALSE,
                   extend_max = dextend_max, extend_min = dextend_min)  
     }
     mods_switch = lapply(1:2, function(i) lapply(mods, function(m) m[[i]]))
