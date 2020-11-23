@@ -13,11 +13,11 @@ varName = 'burnt_area_gb'
 modScale = 60*60*24*360*100
 
 obss = paste0("../fireMIPbenchmarking/data/benchmarkData/",
-              c("GFED4s_v2.nc", "GFED4.nc", "MCD45.nc", "meris_v2.nc",
+              c("GFED4s_v2.nc", "../GFED4.fBA.r0d5.1995.2013.nc", "MCD45.nc", "meris_v2.nc",
                 "MODIS250_q_BA_regridded0.5.nc"))
 names(obss) = c("GFED4s", "GFED4", "MCD45", "Meris", "CCI")
-years = list(1997:2013, 1997:2013, 2001:2013, 2006:2012, 2001:2013)
-obsLayers = list(48:204, 48:204, 1:156, 1:84, 1:156)
+years = list(1998:2014, 1996:2012, 2001:2013, 2006:2012, 2001:2013)
+obsLayers = list(1:204, 8:204, 1:156, 1:84, 1:156)
 obsScale = 12*100
 
 limits_aa = c(0, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50)                
@@ -27,7 +27,7 @@ cols_aa = c('#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c',
 dlimits_aa = c(-20, -10, -5, -1, -0.5, -0.1, 0.1, 0.5, 1, 5, 10, 20)                  
 dcols_aa = rev(c('#a50026','#d73027','#f46d43','#fdae61','#fee090','#ffffbf','#e0f3f8','#abd9e9','#74add1','#4575b4','#313695'))
 
-limits_tr = c(-2, -1, -0.5, -0.2, -0.1, 0.1, 0.2, 0.5, 1, 2)/10         
+limits_tr = c(-0.1, -0.01, -0.005, -0.001, -0.0001, 0.0001, 0.001, 0.005, 0.01, 0.1)#c(-2, -1, -0.5, -0.2, -0.1, 0.1, 0.2, 0.5, 1, 2)/10         
 cols_tr = rev(c('#a50026','#d73027','#f46d43','#fdae61','#fee090','#ffffbf','#e0f3f8','#abd9e9','#74add1','#4575b4','#313695'))
 
 dlimits_tr = limits_tr            
@@ -36,7 +36,7 @@ dcols_tr = cols_tr
 cols_phase = c('#313695', '#a50026', '#ffff00','#313695')
 limits_phase = 0.5:11.5 
 
-dcols_phase = c("#f7f7f7", "#b35806", "#003300", "#542788", "#f7f7f7")
+dcols_phase = c("#003300", "#542788", "#f7f7f7", "#b35806", "#003300")
 dlimits_phase = (-5.5:5.5)
 
 
@@ -63,18 +63,20 @@ logit <- function(x) {
 }
 
 logistic <- function(x) 
-    1/(1+exp(x*(-1)))
+    1/(1+exp(x*(-1)))#
 
 TrendFun <- function(x) {
     
     fit = lm(x ~ t, data = data.frame(x = x, t = 1:length(x)))
     
     #res = try(summary(fit)[[4]][2, 3:4])
-    res = try(coefficients(fit)[2], summary(fit)[[4]][2, 4])
+    res = try(c(coefficients(fit)[2], summary(fit)[[4]][2, 4]))
+    
     if (is.na(res[1])) return(c(0, 1))  
     if (class(res) == "try-error") return(c(-999, 0.0))
     
     #if (abs(res[1]) > 8) browser()
+    
     return(res)
 }
 
@@ -86,10 +88,47 @@ TrendFun <- function(x) {
 #    xDT[i] = x[i] + wow[mn] * yr
 #}
 
-makeTrendCoe <- function(dat) {
-    
+makeTrendCoe <- function(dat, diff = FALSE) {
+    dat0 = dat
     dat = dat/1200
+    if (nlayers(dat) > 24) 
+        dat = layer.apply(12:nlayers(dat), function(i) mean(dat[[(i-11):i]]))
+    
+    
     dat = logit(dat)
+    mask = !is.na(dat[[1]])
+
+    mdat = dat[mask]
+    mtr = apply(mdat, 1, TrendFun)
+
+
+    datO = dat[[1:2]]
+    datO[[1]][mask] =  mtr[1,]
+    datO[[2]][mask] =  mtr[2,]
+    
+    if (!diff) return(datO)
+    
+    datDT = layer.apply(1:nlayers(dat), function(t) dat[[t]] - t  * datO[[1]])
+
+    mdat = mean(logistic(dat))
+    mdatDT =  mean(logistic(datDT))
+    diff =  mdat
+
+    diff = mdat - mdatDT
+    testn = mdatDT > mdat
+    testp = !testn  
+
+    diff[testn] =(mdat[testn] - mdatDT[testn])*mdatDT[testn]
+    diff[testp] = (mdat[testp] - mdatDT[testp])*(1 - mdatDT[testp])
+
+    return(2*(logit(mdat)- logit(mdatDT))/((nlayers(dat)/12)^2))
+    
+    browser()
+    diff[testn] = diff[testn] / mdatDT[testn]
+    diff[testp] = diff[testp] / (1-mdatDT[testp])
+
+    browser()
+
     yay <<- dat
     datO = dat[[1:2]]
     mask = !is.na(dat[[1]])
@@ -156,24 +195,31 @@ PhaseConcMod <- function(dat, modEG = NULL) {
     clim = layer.apply(1:12, function(mn) mean(dat[[seq(mn, nlayers(dat), by = 12)]]))
     if (!is.null(modEG)) clim = raster::resample(clim, modEG)
     PC = PolarConcentrationAndPhase(clim, 'months')
+    #PC[[1]] = PC[[1]] + 6
+    #PC[[1]][PC[[1]]>12]=PC[[1]][PC[[1]]>12]-12
+    
     Modal = Modalise(clim)
     return(addLayer(PC, Modal))
 }
 
 
-datConvert <- function(dat, scale, annualAver = FALSE, trend = FALSE, Seasonal = FALSE, 
-                       modality = FALSE,
+datConvert <- function(dat, scale, annualAver = FALSE, trendC = FALSE, trendT,
+                       Seasonal = FALSE, modality = FALSE,
                        modEG = NULL) {
     RS <- function(dat) {
         if (!is.null(modEG)) dat = raster::resample(dat, modEG)
+        dat[is.na(modEG)] = NaN
         return(dat)
     }
     if (annualAver) {
         dat = mean(dat) * scale
         dat = RS(dat)
-    } else if (trend) {        
+    } else if (trendC) {        
         dat = RS(dat)
         dat = makeTrendCoe(dat * scale)
+    } else if (trendT) {     
+        dat = RS(dat)
+        dat = makeTrendCoe(dat * scale, TRUE)
     } else if (Seasonal) 
         dat = PhaseConcMod(dat, modEG)
     return(dat)
@@ -202,7 +248,7 @@ openMod <- function(mod, dir, varName, years, modScale, ..., layer = NULL) {
 
 openObs <- function(obs, Layers, scale, modEG, ..., layer = NULL) { 
     
-    tempFile = paste(c('temp/xx', filename.noPath(obs, TRUE),
+    tempFile = paste(c('temp/', filename.noPath(obs, TRUE),
                      range(Layers), ..., scale, '.nc'),
                      collapse = '-')
     cat("\nopening:", obs)
@@ -223,10 +269,17 @@ openObs <- function(obs, Layers, scale, modEG, ..., layer = NULL) {
     return(obs)
 }
 
+plotTrendLogged <- function(x, ...) {
+    
+    plotStandardMap(exp(x), ...)
+}
+
 minusStandard <- function(r1, r2) r1 - r2
 annual_average_NME <- function(mods, obss, fname, cols, limits, dcols, dlimits, 
                                 ..., FUN = NME, nullFUN = null.NME, diffFUN = minusStandard,
-                                    plotFun = plotStandardMap, legendFun = StandardLegend) {   
+                                plotFun = plotStandardMap, legendFun = StandardLegend,
+                                extend_max = TRUE, extend_min = FALSE,
+                                dextend_max = TRUE, dextend_min = TRUE) {   
     png(fname, height = 4 * 15 *(length(obss)+2)/36, width = 4*(length(mods)+1),
         units = 'in', res = 300)
     par(mfcol = c(length(obss)+2, length(mods)+1), mar = rep(0, 4))
@@ -244,10 +297,11 @@ annual_average_NME <- function(mods, obss, fname, cols, limits, dcols, dlimits,
     obss = mapply(openObs, obss, obsLayers, obsScale,
                   MoreArgs = list(modEG = mods[[1]][[1]][[1]], ...))
     
-    mapply(plotStandardMap, obss, obs_names,
+    mapply(plotFun, obss, obs_names,
            MoreArgs = list(cols = cols, limits = limits))
 
-    legendFun(cols, limits, dat = obss[[1]], oneSideLabels = FALSE)    
+    legendFun(cols, limits, dat = obss[[1]], oneSideLabels = FALSE,
+              extend_max = extend_max, extend_min = extend_min)    
     
     plotMod <- function(mod, name) {
         
@@ -257,7 +311,8 @@ annual_average_NME <- function(mods, obss, fname, cols, limits, dcols, dlimits,
             plotFun(diffFUN(md[[1]], obs), '', cols = dcols, limits = dlimits)
         mapply(plotDiff, obss, mod)
         
-        legendFun(dcols, dlimits, dat = mod[[1]][[1]]-obss[[1]], oneSideLabels = FALSE)  
+        legendFun(dcols, dlimits, dat = mod[[1]][[1]]-obss[[1]], oneSideLabels = FALSE,
+                  extend_max = dextend_max, extend_min = dextend_min)  
     }
     mods_switch = lapply(1:2, function(i) lapply(mods, function(m) m[[i]]))
     mapply(plotMod, mods_switch, mods_names)
@@ -289,13 +344,19 @@ annual_average_NME <- function(mods, obss, fname, cols, limits, dcols, dlimits,
                          mods_names)
     return(scoreO)
 }
+if (FALSE) {
+score_aa = annual_average_NME(mods, obss, 'figs/burnt_area_aa.png', 
+                               cols_aa, limits_aa, dcols_aa, dlimits_aa, TRUE)
 
-#score_aa = annual_average_NME(mods, obss, 'figs/burnt_area_aa.png', 
-#                               cols_aa, limits_aa, dcols_aa, dlimits_aa, TRUE)
+score_tC = annual_average_NME(mods, obss, 'figs/burnt_area_tC.png',
+                              cols_tr, limits_tr, dcols_tr, dlimits_tr, 
+                              FALSE, TRUE, extend_min = TRUE)
+logDiff <- function(x1, x2) 
+    exp(x1) - exp(x2)
 
-#score_tr = annual_average_NME(mods, obss, 'figs/burnt_area_tr.png',
-#                              cols_tr, limits_tr, dcols_tr, dlimits_tr, 
-#                              FALSE, TRUE)
+score_tT = annual_average_NME(mods, obss, 'figs/burnt_area_tT.png',
+                              cols_tr, limits_tr, dcols_tr, dlimits_tr, 
+                              FALSE, FALSE, TRUE, plotFun = plotTrendLogged, diffFUN = logDiff)
 
 MPD_only <- function(x, y, w = NULL) 
     out = MPDonly(x, y)[[1]]
@@ -306,17 +367,26 @@ null.MPD_only <- function(x, n = 5)
 
 score_ph = annual_average_NME(mods, obss, 'figs/burnt_area_ph.png', 
                               cols_phase, limits_phase, dcols_phase, dlimits_phase,
-                              FALSE, FALSE, TRUE, FUN = MPD_only, nullFUN = null.MPD_only,
+                              FALSE, FALSE, FALSE, TRUE,
+                              FUN = MPD_only, nullFUN = null.MPD_only,
                               diffFUN = phaseDiff,
                               legendFun = SeasonLegend, layer = 1)
 
 score_cn = annual_average_NME(mods, obss, 'figs/burnt_area_cn.png', 
                               cols_conc, limits_conc, dcols_conc, dlimits_conc,
-                              FALSE, FALSE, TRUE, layer = 2)
+                              FALSE, FALSE, FALSE, TRUE, layer = 2)
 
 score_md = annual_average_NME(mods, obss, 'figs/burnt_area_md.png', 
                               cols_modal, limits_modal, dcols_modal, dlimits_modal,
-                              FALSE, FALSE, TRUE, layer = 3)
+                              FALSE, FALSE, FALSE, TRUE, layer = 3)
+
+
+}
 
 
 
+out = mapply(function(i, j) cbind(j, rownames(i), round(i,2)),
+             list(score_aa, score_tC, score_ph, score_cn, score_md),
+             c("Annual average", "Trend", "Phase", "Concentraion", "Modality"))
+out = do.call(rbind, out)
+write.csv(out, "outputs/fire_comparison.csv")
