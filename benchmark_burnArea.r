@@ -30,7 +30,7 @@ dcols_aa = rev(c('#a50026','#d73027','#f46d43','#fdae61','#fee090','#ffffbf','#e
 limits_tr = c(-0.1, -0.01, -0.005, -0.001, -0.0001, 0.0001, 0.001, 0.005, 0.01, 0.1)#c(-2, -1, -0.5, -0.2, -0.1, 0.1, 0.2, 0.5, 1, 2)/10         
 cols_tr = rev(c('#a50026','#d73027','#f46d43','#fdae61','#fee090','#ffffbf','#e0f3f8','#abd9e9','#74add1','#4575b4','#313695'))
 
-dlimits_tr = limits_tr            
+dlimits_tr = limits_tr*10            
 dcols_tr = cols_tr
 
 cols_phase = c('#313695', '#a50026', '#ffff00','#313695')
@@ -335,11 +335,17 @@ annual_average_NME <- function(mods, obss, fname, cols, limits, dcols, dlimits,
     }
     
     score = mapply(function(obs, mod) lapply(mod, NMEout, obs), obss, mods)
-    scoreI = score[1,]
+    scoreO = score[1,]
     if (nrow(score) == 2)
-        scoreO = mapply(function(i, j) cbind(i, j[,ncol(j)]), scoreI, score[2,],
+        scoreO = mapply(function(i, j) cbind(i, j[,ncol(j)]), scoreO, score[2,],
                         SIMPLIFY = FALSE)
-    else browser()
+    else {
+        for (id in 2:nrow(score)) {
+            scoreO = mapply(function(i, j) cbind(i, j[,ncol(j)]), scoreO, score[id,],
+                        SIMPLIFY = FALSE)
+        }
+    }
+        
     scoreO = do.call(rbind, scoreO)
     if (nrow(scoreO) == (3* length(obs_names)))
             rownames(scoreO) = paste(rep(obs_names, each = 3), ' - step', 1:3)
