@@ -8,7 +8,7 @@ graphics.off()
 
 dir = '../jules_outputs/'
 
-mods = c('u-by849', 'u-by851')
+mods = c('u-bw214', 'u-by849', 'u-by851')
 varName = 'burnt_area_gb'
 modScale = 60*60*24*360*100
 
