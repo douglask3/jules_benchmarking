@@ -16,11 +16,12 @@ runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits,
     #mods = openMod(dir, mod, varName, year, TRUE) * modScale
     mods_names = mods
     mods = lapply(years, openYears)
-    
+    modsEG = mods[[1]][[1]][[1]]
+    mods = lapply(mods, function(mod) lapply(mod, function(m) raster::resample(m, modsEG)))
     obs_names = names(obss) #sapply(obss, filename.noPath, TRUE)
     
     obss = mapply(openObs, obss, obsLayers, obsScale,
-                  MoreArgs = list(modEG = mods[[1]][[1]][[1]], ...))
+                  MoreArgs = list(modEG = modsEG, ...))
 
     mapply(plotFun, obss, obs_names,
            MoreArgs = list(cols = cols, limits = limits))
@@ -39,7 +40,8 @@ runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits,
         legendFun(dcols, dlimits, dat = diffFUN(mod[[1]][[1]],obss[[1]]), oneSideLabels = FALSE,
                   extend_max = dextend_max, extend_min = dextend_min)  
     }
-    mods_switch = lapply(1:2, function(i) lapply(mods, function(m) m[[i]]))
+    mods_switch = lapply(1:length(mods[[1]]), function(i) lapply(mods, function(m) m[[i]]))
+    
     mapply(plotMod, mods_switch, mods_names)
     dev.off.gitWatermark()
     NMEout <- function(mod, obs) {
