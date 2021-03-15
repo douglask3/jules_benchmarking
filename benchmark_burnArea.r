@@ -3,15 +3,18 @@ source("cfg.r")
 dir = '../jules_outputs/'
 
 mods = c('u-bw214', 'u-by849', 'u-by851')
+mods = c(paste0('u-by276/', c('gfdl', 'hadgem2', 'ipsl', 'miroc5')), 'u-bw214', 'u-by851')
 varName = 'burnt_area_gb'
 modScale = 60*60*24*360*100
 
 obss = paste0("../fireMIPbenchmarking/data/benchmarkData/",
               c("GFED4s_v2.nc", "../GFED4.fBA.r0d5.1995.2013.nc", "MCD45.nc", "meris_v2.nc",
                 "MODIS250_q_BA_regridded0.5.nc"))
-names(obss) = c("GFED4s", "GFED4", "MCD45", "Meris", "CCI")
+names(obss) = paste0(c("GFED4s", "GFED4", "MCD45", "Meris", "CCI"), '_0.5')
 years = list(1998:2014, 1996:2012, 2001:2013, 2006:2012, 2001:2013)
 obsLayers = list(1:204, 8:204, 1:156, 1:84, 1:156)
+years = list(1998:2006, 1996:2006, 2001:2006, 2005:2006, 2001:2006)
+obsLayers = list(1:108, 8:140, 1:72, 1:12, 1:72)
 obsScale = 12*100
 
 limits_aa = c(0, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50)                
@@ -52,14 +55,14 @@ dlimits_modal = c(-1, -0.5, -0.2, -0.1, 0.1, 0.2, 0.5, 1)
 score_aa = runComparison(mods, obss, 'figs/burnt_area_aa.png', 
                                cols_aa, limits_aa, dcols_aa, dlimits_aa, TRUE)
 
-score_tC = runComparison(mods, obss, 'figs/burnt_area_tC.png',
-                              cols_tr, limits_tr, dcols_tr, dlimits_tr, 
-                              FALSE, TRUE, extend_min = TRUE)
+#score_tC = runComparison(mods, obss, 'figs/burnt_area_tC.png',
+#                              cols_tr, limits_tr, dcols_tr, dlimits_tr, 
+#                              FALSE, TRUE, extend_min = TRUE)
 
-score_tT = runComparison(mods, obss, 'figs/burnt_area_tT.png',
-                              cols_tr, limits_tr, dcols_tr, dlimits_tr, 
-                              FALSE, FALSE, TRUE, plotFun = plotTrendLogged, diffFUN = logDiff)
-
+#score_tT = runComparison(mods, obss, 'figs/burnt_area_tT.png',
+#                              cols_tr, limits_tr, dcols_tr, dlimits_tr, 
+#                              FALSE, FALSE, TRUE, plotFun = plotTrendLogged, diffFUN = logDiff)
+#
 score_ph = runComparison(mods, obss, 'figs/burnt_area_ph.png', 
                               cols_phase, limits_phase, dcols_phase, dlimits_phase,
                               FALSE, FALSE, FALSE, TRUE,
@@ -76,7 +79,7 @@ score_md = runComparison(mods, obss, 'figs/burnt_area_md.png',
                               FALSE, FALSE, FALSE, TRUE, layer = 3)
 
 out = mapply(function(i, j) cbind(j, rownames(i), round(i,2)),
-             list(score_aa, score_tC, score_ph, score_cn, score_md),
-             c("Annual average", "Trend", "Phase", "Concentraion", "Modality"))
+             list(score_aa, score_ph, score_cn, score_md),
+             c("Annual average", "Phase", "Concentraion", "Modality"))
 out = do.call(rbind, out)
 write.csv(out, "outputs/fire_comparison.csv")
