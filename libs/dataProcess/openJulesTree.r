@@ -19,6 +19,6 @@ openJulesTree <- function(dir, dir2 = NULL, levels = c(1:5, 12:13), varname = 'l
         else TC = openFun(levels)
         
     TC = convert_pacific_centric_2_regular(TC)
-    TC = raster::crop(TC, extent(c(-180, 180, -30, 30)))    
+    #TC = raster::crop(TC, extent(c(-180, 180, -30, 30)))    
     return(TC)
 }
