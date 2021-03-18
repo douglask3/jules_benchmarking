@@ -2,6 +2,7 @@ source("cfg.r")
 
 dir = '../jules_outputs/'
 
+
 mods = c('u-bw214', 'u-by849', 'u-by851')
 mods = c(paste0('u-by276/', c('gfdl', 'hadgem2', 'ipsl', 'miroc5')), 'u-bw214', 'u-by851')
 varName = 'burnt_area_gb'
@@ -10,6 +11,7 @@ modScale = 60*60*24*360*100
 obss = paste0("../fireMIPbenchmarking/data/benchmarkData/",
               c("GFED4s_v2.nc", "../GFED4.fBA.r0d5.1995.2013.nc", "MCD45.nc", "meris_v2.nc",
                 "MODIS250_q_BA_regridded0.5.nc"))
+
 names(obss) = paste0(c("GFED4s", "GFED4", "MCD45", "Meris", "CCI"), '_0.5')
 years = list(1998:2014, 1996:2012, 2001:2013, 2006:2012, 2001:2013)
 obsLayers = list(1:204, 8:204, 1:156, 1:84, 1:156)
@@ -52,6 +54,8 @@ limits_modal = c(1, 1.1, 1.2, 1.5, 2)
 dcols_modal = c('#8e0152','#c51b7d','#de77ae','#f1b6da','#fde0ef','#f7f7f7','#e6f5d0','#b8e186','#7fbc41','#4d9221','#276419')
 dlimits_modal = c(-1, -0.5, -0.2, -0.1, 0.1, 0.2, 0.5, 1)
 
+extent = c(-90, -30, -60, 15)
+#extent = c(-180, 180, -90, 90)
 score_aa = runComparison(mods, obss, 'figs/burnt_area_aa.png', 
                                cols_aa, limits_aa, dcols_aa, dlimits_aa, TRUE)
 
