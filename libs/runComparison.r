@@ -2,6 +2,7 @@
 
 runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits, 
                                 ..., FUN = NME, nullFUN = null.NME, diffFUN = minusStandard,
+                                ModLevels = 1, 
                                 plotFun = plotStandardMap, legendFun = StandardLegend,
                                 extend_max = TRUE, extend_min = FALSE,
                                 dextend_max = TRUE, dextend_min = TRUE) {   
@@ -10,22 +11,24 @@ runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits,
     par(mfcol = c(length(obss)+2, length(mods)+1), mar = rep(0, 4))
     plot.new()
 
+    
     openYears <- function(year) 
-        lapply(mods, openMod, dir, varName, year, modScale,...)
+        lapply(mods, openMod, dir, varName, year, modScale, levels = ModLevels, ...)
 
     #mods = openMod(dir, mod, varName, year, TRUE) * modScale
     mods_names = mods
     mods = lapply(years, openYears)
+    
     modsEG = mods[[1]][[1]][[1]]
     mods = lapply(mods, function(mod) lapply(mod, function(m) raster::resample(m, modsEG)))
     obs_names = names(obss) #sapply(obss, filename.noPath, TRUE)
     
     obss = mapply(openObs, obss, obsLayers, obsScale,
                   MoreArgs = list(modEG = modsEG, ...))
-
+    if (F) {
     mapply(plotFun, obss, obs_names,
            MoreArgs = list(cols = cols, limits = limits))
-
+    
     legendFun(cols, limits, dat = obss[[1]], oneSideLabels = FALSE,
               extend_max = extend_max, extend_min = extend_min)    
     
@@ -43,10 +46,21 @@ runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits,
     mods_switch = lapply(1:length(mods[[1]]), function(i) lapply(mods, function(m) m[[i]]))
     
     mapply(plotMod, mods_switch, mods_names)
+    
     dev.off.gitWatermark()
-    NMEout <- function(mod, obs) {
-        
-        scores = FUN( obs, mod[[1]])
+    }
+    NMEout <- function(mod, obs) {        
+        if (nlayers(obs) == 2 && nlayers(mod) == 2 && grepl("trend", fname)) {
+            #w = (1-sqrt(obs[[2]]*mod[[2]])) * raster::area(obs[[2]])
+            w = (1-obs[[2]])* raster::area(obs[[2]])
+            obs = obs[[1]]
+            mod = mod[[1]]
+        } else w = raster::area(obs[[1]])
+        test = obs> 9E9
+        obs[test] = NaN
+        mod[test] = NaN
+        if ((nlayers(obs)+1) == nlayers(mod)) obs = addLayer(obs, 1 - sum(obs))
+        scores = FUN( obs, mod, w = w)
         if (class(scores) != "numeric") scores = score(scores)
         null = nullFUN(obs, n = 5)
         
@@ -57,18 +71,23 @@ runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits,
     }
     
     score = mapply(function(obs, mod) lapply(mod, NMEout, obs), obss, mods)
-    scoreO = score[1,]
-    if (nrow(score) == 2)
-        scoreO = mapply(function(i, j) cbind(i, j[,ncol(j)]), scoreO, score[2,],
-                        SIMPLIFY = FALSE)
-    else {
-        for (id in 2:nrow(score)) {
-            scoreO = mapply(function(i, j) cbind(i, j[,ncol(j)]), scoreO, score[id,],
-                        SIMPLIFY = FALSE)
+    if (is.null(dim(score)) && length(score) == 1) {
+        scoreO = score[[1]]
+    } else {
+        scoreO = score[1,]
+        if (nrow(score) == 2)
+            scoreO = mapply(function(i, j) cbind(i, j[,ncol(j)]), scoreO, score[2,],
+                            SIMPLIFY = FALSE)
+        else {
+            for (id in 2:nrow(score)) {
+                scoreO = mapply(function(i, j) cbind(i, j[,ncol(j)]), scoreO, score[id,],
+                            SIMPLIFY = FALSE)
+            }
         }
+        
+        scoreO = do.call(rbind, scoreO)
     }
         
-    scoreO = do.call(rbind, scoreO)
     if (nrow(scoreO) == (3* length(obs_names)))
             rownames(scoreO) = paste(rep(obs_names, each = 3), ' - step', 1:3)
     else rownames(scoreO) = obs_names
