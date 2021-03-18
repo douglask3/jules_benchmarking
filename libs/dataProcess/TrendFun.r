@@ -12,14 +12,15 @@ TrendFun <- function(x) {
 }
 
 
-makeTrendCoe <- function(dat, diff = FALSE) {
+makeTrendCoe <- function(dat, diff = FALSE, trendTransFUN = logit) {
     dat0 = dat
+    
     dat = dat/1200
     if (nlayers(dat) > 24) 
         dat = layer.apply(12:nlayers(dat), function(i) mean(dat[[(i-11):i]]))
     
     
-    dat = logit(dat)
+    if (!is.null(trendTransFUN)) dat = trendTransFUN(dat)
     mask = !is.na(dat[[1]])
 
     mdat = dat[mask]
