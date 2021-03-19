@@ -1,6 +1,6 @@
 source("cfg.r")
 graphics.off()
-dir = "../jules_outputs/RUNC20C_u-by276_isimip_0p5deg_origsoil_dailytrif_fire/hadgem2-es/"
+dir = "../jules_outputs/RUNC20C_u-by276_isimip_0p5deg_origsoil_dailytrif_fire/"
 
 extent = c(-20, 55, -35, 33)
 extent = c(19.75, 20.75, -35, 33)
@@ -31,62 +31,77 @@ sumLat <- function(lat, rs) {
 sumLats <- function(r) 
     t(sapply(x, sumLat, r[]))
 
-polygon0 <- function(x, y, ...) {
-    test = !is.na(y)
-    x = x[test]; y = y[test]
-    polygon(c(x[1], x, tail(x, 1)), c(0, y, 0), border = NA, ...)
+polygon0 <- function(x, y, yb = NULL, ...) {
+    if (is.null(yb)) yb = rep(0, length(y))
+    test = !is.na(y + yb)
+    x = x[test]; y = y[test]; yb = yb[test]
+    x = c(x, rev(x))
+    y = c(y, rev(yb))
+    polygon(x, y, border = NA, ...)
 }
 addOverlay <- function(r, cols, poly = TRUE) {
     covs =  sumLats(r)
     
     for (i in 2:ncol(covs)) covs[,i] = covs[,i] + covs[, i-1]
-    covs = apply(covs, 2, function(i) i/covs[, ncol(covs)])
-    
+    covs = apply(covs, 2, function(i) i/covs[, ncol(covs)]) * 100
     
     addCov <- function(i, col) {
-        y = covs[,i] * 100       
-        if (poly) 
-           polygon0(x, y, col = col)
-        else {
-            lines(x, y, lwd = 2)
-            lines(x, y, col = col, lwd = 2, lty = 2)
+        yt = covs[,i] 
+        if (i> 1) yb = covs[,i-1] else yb = rep(0, length(yt))
+        if (poly) {
+            polygon0(x, yt, yb, col = col)
+        } else {
+            lines(x, yt, lwd = 2)
+            lines(x, yt, col = col, lwd = 2, lty = 2)
         }
      }
     mapply(addCov, nlayers(r):1, cols)
 }
 
-addFireLine <- function(r, scale) {
+addFireLine <- function(r, scale, ...) {
     y = sumLats(r) * scale
-    polygon0(x, y*100, col = "black", density = 20)
+    polygon0(x, y*100, ...)
 }
     
 
 doPlot <- function(covs, BAs, BAscale, name = '', ...)  {
     plot(range(x), c(0, 100), type = 'n', xlab = '', ylab = '', xaxt = 'n', yaxt = 'n', xaxs = 'i', yaxs = 'i')
     mtext(side = 3, adj = 0.1, name)
-    addOverlay(covs, ...)
-    addFireLine(BAs, BAscale)
+    
+    lapply(covs, addOverlay, ...)
+    if (length(BAs)==1) {
+        col = "black"
+        density = 30
+    }  else {
+        col = make.transparent("black", 0.5)
+        density = 10
+    }
+    mapply(addFireLine, BAs, BAscale, density = density, col = col,
+           angle =  c(45, 90, 135, 180)[1:length(BAs)])
+    
 }
 
 plotModObs <- function(obs, obsName, obsLayers, ModLevels, years, axis, cols, ...) {
     years <<- years
-    mod = openMod('', dir, 'frac', years, 1, extent = extent,
+    mods = list.dirs(dir, full.names = FALSE)[-1]
+    
+    mod = lapply(mods, openMod, dir, 'frac', years, 1, extent = extent,
                   levels = ModLevels, cover = TRUE)
     
-    obs = openObs(obs, obsLayers, 1, modEG = mod, cover = TRUE); cat("\n")
+    obs = openObs(obs, obsLayers, 1, modEG = mod[[1]], cover = TRUE); cat("\n")
     if (nlayers(obs) == 2) {
         obs = obs / (100*length(obsLayers))
         obs = addLayer(obs, 1 - sum(obs))
     }
-    modBA = openMod('', dir, 'burnt_area_gb', 2001:2005, 1, extent = extent,  TRUE)
+    modBA = lapply(mods, openMod, dir, 'burnt_area_gb', 2001:2005, 1, extent = extent,  TRUE)
     obsBA = openObs("../fireMIPbenchmarking/data/benchmarkData/GFED4s_v2.nc", 1:12, 1,
-                    modEG = mod, TRUE); cat("\n")
-
-    doPlot(mod, modBA, 60*60*24*365, cols = cols, ...) 
+                    modEG = modBA[[1]], TRUE); cat("\n")
+    
+    doPlot(mod, modBA, 60*60*24*365, cols = make.transparent(cols, 0.6), ...)
     if (axis == 2) mtext("Model + fire", side = 3, line = -2, adj = 0.1)
     axis(axis)
     
-    doPlot(obs, obsBA, 12, , cols = cols, ...) 
+    doPlot(list(obs), list(obsBA), 12, , cols = cols, ...) 
     mtext(paste("Observations:", obsName), side = 3, line = -2, adj = 0.1)
     axis(1)
     axis(axis)
