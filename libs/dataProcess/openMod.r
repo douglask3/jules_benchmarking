@@ -11,7 +11,7 @@ openMod <- function(mod, dir, varName, years, modScale, ..., levels = 1, layer =
     
     if (file.exists(tempFile)) dat = brick(tempFile)
     else {
-        files = list.files(paste0(dir, mod, '/'), full.names = TRUE)
+        files = list.files(paste0(dir, '/', mod, '/'), full.names = TRUE)
         fyr = substr(files, nchar(files)-6, nchar(files)-3)
         if(length(years == 1)) years = c(years, years) 
         files = files[apply( sapply(fyr, '==', years), 2, any)]
