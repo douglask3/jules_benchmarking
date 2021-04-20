@@ -43,7 +43,7 @@ process.jules.file <- function(file, level, varName) {
     if (length(dim(dat)) == 2 && ncol(dat) == 12)
         r = layer.apply(1:12, monthizeData, singleLayer)
     else if (length(dim(dat)) == 3) {
-	if (varName != modFacVar) {
+	if (varName != modFracVar) {
 	    openWeightLayer <- function(fracLevel) {
 	        frac = process.jules.file(file, fracLevel, modFacVar)
 	        r = layer.apply(1:12, monthizeData, multiLayer, fracLevel)
