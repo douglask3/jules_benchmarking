@@ -2,17 +2,17 @@ source("libs/return_multiple_from_functions.r")
 library(mapproj)
 
 plotStandardMap <- function(x, txt = '', limits, cols, e = NULL, recrop_e = TRUE, 
-                            y_range = c(-60, 90), limits_error = c(0.05, 0.1),
-                            ePatternRes = 15,  ePatternThick = 0.6, ...) {
+                            y_range = c(-60, 90), limits_error = c(0.5),
+                            ePatternRes = 30,  ePatternThick = 0.6, add = FALSE,...) {
     if (nlayers(x) == 1) x = x[[1]]
     mask = raster('data/seamask.nc')
     mask = raster::resample(mask, x)
     x[mask != 2] = NaN
     if(is.null(e) && nlayers(x) > 1) {
         if (nlayers(x) == 2) {
-            e = x[[2]]
+            e = 1-x[[2]]
             x = x[[1]]
-        } else e = sd.raster(x)
+        } else e = 1-sd.raster(x)
     }
     if(!is.null(e)) e[mask != 2] = NaN
     
@@ -24,7 +24,7 @@ plotStandardMap <- function(x, txt = '', limits, cols, e = NULL, recrop_e = TRUE
                                 limits_error = limits_error, ...)
     }
     
-    FUN(...)
+    FUN(add = add,...)
     addCoastlineAndIce2map()    
     
     FUN(add = TRUE, ...)
