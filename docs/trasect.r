@@ -5,18 +5,28 @@ dirs = paste0("../jules_outputs/", c("ALL_u-bk886_isimip_0p5deg_origsoil_dailytr
                                      "RUNC20C_u-by276_isimip_0p5deg_origsoil_dailytrif_fire/"))
 
 extent = c(-20, 55, -35, 33)
-extent = c(19.75, 20.75, -35, 33)
+extent = c(19.75, 20.75, -33, 33)
 
-ModLevels = list(list(1:5, 12:13, c(6:11), 16), list(c(1:5, 12:13), c(6:11), 16))
-obsLayers = list(list(1:2, 5, c(3:4), 8), 1:60)
-years_in = list(2005:2006, 2001:2006)
+xat = seq(-40, 40, by = 10)
+yat = seq(0, 100, by = 20)
+
+ModLevels = list(list(1:5, 12:13, c(6:11), 16), list(1:5, 12:13, c(6:11), 16),
+                 list(c(1:5, 12:13), c(6:11), 16))
+obsLayers = list(list(1:2, 5, c(3:4), 8), list(1:2, 5, c(3:4), 8), 1:60)
+years_in = list(2005:2006, 2005:2006, 2001:2006)
 
 dir_dat = "../fireMIPbenchmarking/data/benchmarkData/"
 obss = list(CCI = "vegfrac_refLC_refCW.nc",
+            IGBP = "vegfrac_igbp.nc",
             VCF = c("treecover2000-2014.nc", "nontree2000-2014.nc"))
 obss = lapply(obss, function(i) paste0(dir_dat, i))
 
+plotModT = c(T, F, T)
+plotLegT = c(F, T, T)
+axisS = c(2, 2, 4)
+
 cols = list(c(Bare = '#a6611a', Grass = '#dfc27d', Shrub = '#80cdc1', Tree = '#018571'),
+            c(Bare = '#a6611a', Grass = '#dfc27d', Shrub = '#80cdc1', Tree = '#018571'),
             c(Bare = '#d8b365', Grass = '#ffffbf', Wood = '#5ab4ac'))
 
 
@@ -64,17 +74,27 @@ addFireLine <- function(r, x, lats, scale, ...) {
 }
     
 
-doPlot <- function(x, lats, covs, BAs, BAscale, name = '', ...)  {
-    plot(range(x), c(0, 100), type = 'n', xlab = '', ylab = '', xaxt = 'n', yaxt = 'n', xaxs = 'i', yaxs = 'i')
+doPlot <- function(x, lats, covs, BAs, BAscale, name = '', add = FALSE,...)  {
+    if (!add) {
+        plot(range(x), c(0, 100), type = 'n', xlab = '', ylab = '',
+             xaxt = 'n', yaxt = 'n', xaxs = 'i', yaxs = 'i')
+        lblank = rep('', length(xat))
+        lapply(c(1,3), axis, at = xat, labels = lblank)
+        lblank = rep('', length(yat))
+        lapply(c(2,4), axis, at = yat, labels = lblank)
+    }  
     mtext(side = 3, adj = 0.1, name)
     
-    lapply(covs, addOverlay, x, lats, ...)
+    for (nn in 1:4) {
+        lapply(covs, addOverlay, x, lats, ...)
+        lapply(rev(covs), addOverlay, x, lats, ...)
+    }
     if (length(BAs)==1) {
         col = "black"
         density = 30
     }  else {
         col = make.transparent("black", 0.5)
-        density = 10
+        density = 15
     }
     if (!is.null(BAs)) {
         mapply(addFireLine, BAs, BAscale, density = density, col = col,
@@ -84,7 +104,14 @@ doPlot <- function(x, lats, covs, BAs, BAscale, name = '', ...)  {
 }
 
 
-plotModObs <- function(obs, obsName, obsLayers, ModLevels, years, axis, cols, ...) {
+plotModObs <- function(obs, obsName, obsLayers, ModLevels, years, axis, cols,
+                       plotModT, plotLegT = plotModT, ...) {
+    
+    if (plotLegT) {
+        plot.new()
+        legend("center", col = cols, legend = names(cols), pch = 19, pt.cex = 3, bty = 'n',                     horiz = TRUE)
+    }
+
     years <<- years
     c(mods, mod):= openModsFromDir(dirs, years, ModLevels, extent)
 
@@ -96,33 +123,43 @@ plotModObs <- function(obs, obsName, obsLayers, ModLevels, years, axis, cols, ..
         obs = obs / (100*length(obsLayers))
         obs = addLayer(obs, 1 - sum(obs))
     }
-    modBA = lapply(mods[[2]], openMod, dir[2],
+    modBA = lapply(mods[[2]], openMod, dirs[2],
                    'burnt_area_gb', 2001:2005, 1, extent = extent,  TRUE)
     obsBA = openObs("../fireMIPbenchmarking/data/benchmarkData/GFED4s_v2.nc", 1:12, 1,
                     modEG = modBA[[1]], TRUE); cat("\n")
-    
-    doPlot(x, lats, mod[[1]], NULL, 60*60*24*365, cols = make.transparent(cols, 0.6), ...)
-    if (axis == 2) mtext("Model without fire", side = 3, line = -2, adj = 0.1)
-    axis(axis)
-    axis(3)
-    doPlot(x, lats, mod[[2]], modBA, 60*60*24*365, cols = make.transparent(cols, 0.6), ...)
-    if (axis == 2) mtext("Model with fire", side = 3, line = -2, adj = 0.1)
-    axis(axis)
+   
+    if (plotModT) {
+        doPlot(x, lats, mod[[1]], NULL, 60*60*24*365, cols = cols, ...)        
+        doPlot(x, lats, mod[[1]], NULL, 60*60*24*365, cols = make.transparent(cols, 0.8), 
+               add = TRUE, ...)
+        mtext("Model without fire", side = 3, line = -2, adj = 0.1)
+        axis(axis, at = yat)
+        
+        axis(3, at = xat)        
+        doPlot(x, lats, mod[[2]], modBA, 60*60*24*365, cols = cols, ...)
+        doPlot(x, lats, mod[[2]], modBA, 60*60*24*365, cols = make.transparent(cols, 0.8), 
+               add = TRUE,  ...)
+        mtext("Model with fire", side = 3, line = -2, adj = 0.1)
+        axis(axis)
+        
+    }
     
     doPlot(x, lats, list(obs), list(obsBA), 12, , cols = cols, ...) 
     mtext(paste("Observations:", obsName), side = 3, line = -2, adj = 0.1)
-    axis(1)
-    axis(axis)
-    plot.new()
-    legend("center", col = cols, legend = names(cols), pch = 19, pt.cex = 3, bty = 'n', horiz = TRUE)
-
+    axis(1, at = xat)
+    axis(axis, at = yat)
+    
+    mtext(side = 1, 'Latitude', line = 2)
 }
 png("figs/ISIMIP_transect.png", height = 9, width = 7.2, units = 'in', res = 300)#
-    layout(cbind(1:4, 5:8), heights = c(1,1, 1, 0.3))
-    par( mar = rep(0.5, 4), oma = rep(3.5, 4))
+    layout(cbind(1:5, 6:10), heights = c(0.3,1, 1, 1, 1))
+    par( mar = rep(0.25, 4), oma = rep(3.5, 4))
 
     mapply(plotModObs, obss, names(obss),  obsLayers, ModLevels, years_in, cols = cols,
-          axis = c(2, 4))
+          axis = axisS, plotModT = plotModT)
     mtext(outer = TRUE, side = 2, 'Cover (%)', line  = 2)
-    mtext(outer = TRUE, side = 1, 'Latitude', line = -3)
+    #mtext(outer = TRUE, side = 1, 'Latitude', line = -3)
 dev.off()
+
+
+axisS
