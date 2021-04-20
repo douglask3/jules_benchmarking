@@ -25,7 +25,7 @@ runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits,
     
     obss = mapply(openObs, obss, obsLayers, obsScale,
                   MoreArgs = list(modEG = modsEG, ...))
-    if (F) {
+    if (T) {
     mapply(plotFun, obss, obs_names,
            MoreArgs = list(cols = cols, limits = limits))
     

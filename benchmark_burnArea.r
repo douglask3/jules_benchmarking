@@ -50,7 +50,7 @@ dcols_modal = c('#8e0152','#c51b7d','#de77ae','#f1b6da','#fde0ef','#f7f7f7','#e6
 dlimits_modal = c(-1, -0.5, -0.2, -0.1, 0.1, 0.2, 0.5, 1)
 
 extent = c(-90, -30, -60, 15)
-#extent = c(-180, 180, -90, 90)
+extent = c(-180, 180, -90, 90)
 score_aa = runComparison(mods, obss, 'figs/burnt_area_aa.png', 
                                cols_aa, limits_aa, dcols_aa, dlimits_aa, TRUE)
 
