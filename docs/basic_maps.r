@@ -8,25 +8,27 @@ ModLevels = list(Tree = 1:5, Wood = c(1:5, 12:13), Shrub = 12:13, Grass = c(6:11
 
 dir_dat = "../fireMIPbenchmarking/data/benchmarkData/"
 obss = list(CCI = "vegfrac_refLC_refCW.nc",
+            IGBP = "vegfrac_igbp.nc",
             VCF = c("treecover2000-2014.nc", "nontree2000-2014.nc"))
 obss = lapply(obss, function(i) paste0(dir_dat, i))
-obsLayers = list(list(1:2, c(1:2, 5), 5, c(3:4), 8), 1:60)
+obsLayers = list(list(1:2, c(1:2, 5), 5, c(3:4), 8), list(1:2, c(1:2, 5), 5, c(3:4), 8), 1:60)
 
 cols = c('#a6611a','#dfc27d','#80cdc1','#018571')
 
 limits_cover = seq(0, 0.9, 0.1)*100
-    cols_cover = c('#ffffe5','#f7fcb9','#d9f0a3','#addd8e','#78c679','#41ab5d','#238443','#006837','#004529')
+cols_cover = c('#ffffe5','#f7fcb9','#d9f0a3','#addd8e','#78c679','#41ab5d','#238443','#006837','#004529')
 
 c(mods, mod):= openModsFromDir(dirs, 2001:2006, ModLevels, extent)
 mod = lapply(mod, function(i) lapply(i, function(k) 100*k/sum(k[[c(1, 3, 4, 5)]])))
 
 obs = mapply(openObs,obss, obsLayers, 1, MoreArgs = list(modEG = mod[[1]][[1]], cover = TRUE)); cat("\n")
 obs[[1]] = 100*obs[[1]]/sum(obs[[1]][[c(1, 3, 4, 5)]])
-obs[[2]] = obs[[2]]/length(obsLayers[[2]])
-obs[[2]] = addLayer(obs[[2]], 100 - sum(obs[[2]]))
-blank = obs[[2]][[1]]
+obs[[2]] = 100*obs[[2]]/sum(obs[[2]][[c(1, 3, 4, 5)]])
+obs[[3]] = obs[[3]]/length(obsLayers[[3]])
+obs[[3]] = addLayer(obs[[3]], 100 - sum(obs[[3]]))
+blank = obs[[3]][[1]]
 blank[] = NaN
-obs[[2]] = addLayer(blank, obs[[2]][[1]], blank, obs[[2]][[2:3]])
+obs[[3]] = addLayer(blank, obs[[3]][[1]], blank, obs[[3]][[2:3]])
 
 
 summeriseModSet <- function(mod) {
@@ -38,9 +40,9 @@ summeriseModSet <- function(mod) {
 mod = lapply(mod, summeriseModSet)
 list2layer <- function(r) layer.apply(r, function(i) i)
 
-png("figs/coverMaps.png", height = 9, width = 12, res = 300, units = 'in')
-    par(mfcol = c(5, 4), mar = rep(0, 4), oma = rep(2, 4))
-    layout(rbind(cbind(1:5, 6:10, 11:15, 16:20), 21), heights = c(rep(1, 5), 0.4))
+png("figs/coverMaps.png", height = 9, width = 12*5/4, res = 300, units = 'in')
+    par(mar = rep(0, 4), oma = rep(2, 4))
+    layout(rbind(cbind(1:5, 6:10, 11:15, 16:20, 21:25), 26), heights = c(rep(1, 5), 0.4))
     
     
     lapply(mod, function(i) lapply(i, plotStandardMap, txt = '',
@@ -58,8 +60,8 @@ png("figs/coverMaps.png", height = 9, width = 12, res = 300, units = 'in')
     mapply(mtext, c("Tree", "Wood", "Shrub", "Grass", "Bare"),
             adj = 1-(seq(0.1, 1, 0.2)*6)/6.4, side = 2, outer = TRUE)
 
-    mapply(mtext, c("Model no fire", "Model with fire", "CCI", "VCF"),
-           adj = seq(0.125, 1, 0.25), side = 3, outer = TRUE)
+    mapply(mtext, c("Model no fire", "Model with fire", "CCI", "IGBP", "VCF"),
+           adj = seq(0.1, 1, 0.2), side = 3, outer = TRUE)
 dev.off()
 
 
