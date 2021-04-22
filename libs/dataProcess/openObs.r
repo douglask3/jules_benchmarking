@@ -1,4 +1,4 @@
-openObs <- function(obs, Layers, scale, modEG, ..., layer = NULL) { 
+openObs <- function(obs, Layers, scale = 1, modEG, ..., layer = NULL) { 
     if (!exists("extent") || is.null(extent)) extent = c(-180, 180, -90, 90)
     
     if (is.list(Layers)) tLayers = paste(sapply(Layers, paste0, collapse = '_'), collapse = '-')

@@ -1,10 +1,12 @@
-openMod <- function(mod, dir, varName, years, modScale, ..., levels = 1, layer = NULL) {
+openMod <- function(mod, dir, varName, years, modScale, ...,
+                    levels = 1, layer = NULL, fileID = '') {
     
     if (!exists("extent") || is.null(extent)) extent = c(-180, 180, -90, 90)
     if (is.list(levels)) tLayers = paste(sapply(levels, paste0, collapse = '_'), collapse = '-')
         else tLayers = range(levels)
+   
     tempFile = paste(c('temp/', paste(strsplit(mod, '/')[[1]], collapse = '_'),
-                     varName, range(years), tLayers, ..., extent, modScale, '.nc'),
+                     varName, range(years), tLayers, ..., fileID, extent, modScale, '.nc'),
                      collapse = '-')
     cat("\nopening:", mod)
     cat("\n\tinto:", tempFile, "\n")
@@ -12,6 +14,7 @@ openMod <- function(mod, dir, varName, years, modScale, ..., levels = 1, layer =
     if (file.exists(tempFile)) dat = brick(tempFile)
     else {
         files = list.files(paste0(dir, mod, '/'), full.names = TRUE)
+        if (fileID != '') files = files[grepl(fileID, files)]
         fyr = substr(files, nchar(files)-6, nchar(files)-3)
         if(length(years == 1)) years = c(years, years) 
         files = files[apply( sapply(fyr, '==', years), 2, any)]
