@@ -4,7 +4,8 @@ datConvert <- function(dat, scale, annualAver = FALSE, trendC = FALSE, trendT = 
     RS <- function(dat) {
         if (!is.null(modEG)) dat = raster::resample(dat, modEG)
         dat[is.na(modEG)] = NaN
-        return(dat)    }
+        return(dat)    
+    }
     if (annualAver) {
         dat = mean(dat) * scale
         dat = RS(dat)
@@ -19,6 +20,7 @@ datConvert <- function(dat, scale, annualAver = FALSE, trendC = FALSE, trendT = 
     } else if (cover) {
         dat = sum(dat)
         dat = RS(dat)
-    }
+    } else dat = layer.apply(dat, RS)
+    
     return(dat)
 }

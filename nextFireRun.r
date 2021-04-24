@@ -6,37 +6,22 @@ sourceAllLibs("libs/")
 jules_out_dir = "/hpc/data/d05/cburton/jules_output/"
 outs = cbind("u-cb020_CTRL" = c(1),
              "u-cb020_EXP" = c(0))
+
+
 extent = c(-180, 180, -90, 90)
+pc_sample = 5
 
-
-zeroInf <- function(x, a = -1) 1-exp(a*x)
-
-logitNormal <- function(obs, sim) {
-    obs0 = obs == 0
-    obs1 = !obs0
-    obs = logit(obs)
-    simt = logit(sim)
-    sim2 = (1-sim)^2
-    FUN <- function(params) {
-        P0 = sim2 * (1 - params[1])
-        P1 =  (1 - P0[obs1]) * (dnorm(obs[obs1], simt[obs1], params[2]))
-        
-        -sum(log(P0[obs0])) - sum(log(P1))
-    }
-    -optim(c(0.1, 1), FUN)$value
-}
-
-param_trans = list("BL_av_BA" = c("fun" = zeroInf, "ParamsGuess" = c(-1)))
+param_trans = list("BL_av_BA" = c("fun" = modParamTrans.zeroInf, "ParamsGuess" = c(-1)))
 
 variables = list("Burnt Area" = list(ObsOpenArgs   = list(obs = 'data/GFED4s_burnt_area.nc',
-                                                           Layers = 1:12,
-                                                           annualAver = TRUE),
-                                      JulesOpenArgs = list(years = 2001:2002,
-                                                           annualAver = TRUE,
+                                                           Layers = 1:24,
+                                                           annualAver = FALSE),
+                                     JulesOpenArgs = list(years = 2001:2002,
+                                                           annualAver = FALSE,
                                                            fileID = 'ilamb',
                                                            varName = "burnt_area_gb",
                                                            modScale = 60*60*24*30),
-                                  OptFun = logitNormal))
+                                     OptFun = logitNormal))
 
 openJulesDat <- function(mod) {    
     #files = list.files(dir)
@@ -46,16 +31,52 @@ openJulesDat <- function(mod) {
 }
 
 simss = lapply(colnames(outs), openJulesDat)
-
-openObsi <- function(var)
-    dat = do.call(openObs, c(var$ObsOpenArgs, modEG = sim[[1]][[1]]))
+if (pc_sample < 100) {
+    tfile = paste0('temp/mask-', pc_sample, filename.noPath(simss[[1]][[1]]))
+    if (file.exists(tfile)) masks = brick(tfile)
+    else {
+        masks = !is.na(simss[[1]][[1]])
+        layerMask <- function(mask) {
+            ids = which(mask[])
+            ids = sample(ids, size = round( length(ids) * (100-pc_sample)/100), replace = FALSE)
+            mask[ids] = 0
+            mask
+        }
+        masks = layer.apply(masks, layerMask)
+        masks = writeRaster(masks, file = tfile)
+    }
+}
+        
+openObsi <- function(var) 
+    dat = do.call(openObs, c(var$ObsOpenArgs, modEG = simss[[1]][[1]]))
 
 obss = lapply(variables, openObsi)
+obss = lapply(variables, openObsi)
+
 
 calProbs <- function(sims) {
     calProb <- function(obs, sim, var) {
-        mask = !is.na(obs + sim)
-        p = var$OptFun(obs[mask], sim[mask])
+        nl = min(nlayers(obs), nlayers(sim))
+        grabV <- function(i, r) {
+            mask = !is.na(r[[i]])& masks[[i]]
+            out = r[[i]][mask]
+            return(out)
+        }
+        grabVs <- function(r) {
+            vName = paste0('temp/', filename.noPath(r, TRUE), maskName, '.csv')
+            
+            if (file.exists(vName)) vs = read.csv(vName)[,1]
+            else {
+                vs = lapply(1:nl, grabV, r)
+                vs = unlist(vs)
+                write.csv(vs, file = vName, col.names = FALSE, row.names = FALSE)               
+            }
+            return(vs)
+        }
+        maskName = filename.noPath(masks, TRUE)
+        vObs = grabVs(obs)        
+        vSim = grabVs(sim)
+        p = var$OptFun(vObs, vSim)
     }
     ps = mapply(calProb, obss, sims, variables)   
 }
