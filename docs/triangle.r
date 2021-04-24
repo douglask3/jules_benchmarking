@@ -24,13 +24,14 @@ cols = c('#ffffe5','#f7fcb9','#d9f0a3','#addd8e','#78c679','#41ab5d',
 
 rmask = raster('../UKESM-land-evaluation/outputs/realms.nc')
 rmask = raster::resample(rmask, raster('data/seamask.nc'))
+rmask = convert_regular_2_pacific_centric(rmask)
 meanBrick <-function(...) mean(brick(...))
 #files = list.files(dir, full.names=TRUE)
 
 forDataset <- function(id, idn, layers = NULL, modid = 1) {   
     forRegion <- function(rid, name) {        
         forModel <- function(dat, modname, add = FALSE) {      
-             
+             modname = gsub("_noFire", "", modname)
             if (modname != '') idn = paste0(modname, '\n', idn)
             tree = dat[[1]]
             herb = dat[[2]]
@@ -38,7 +39,7 @@ forDataset <- function(id, idn, layers = NULL, modid = 1) {
                 tree = tree
                 bare = 1-tree-herb
             } else bare = dat[[3]]
-    
+            
     #open <- function(f) {
     #    if (length(f) > 1) out = mean(layer.apply(f, meanBrick))
     #    else out = raster(f)
@@ -46,8 +47,7 @@ forDataset <- function(id, idn, layers = NULL, modid = 1) {
     #}
     #tree = open(tree)
     #herb = open(herb)
-    #bare = open(bare)
-    
+    #bare = open(bare)   
            
             tot = tree + herb + bare
         
@@ -55,6 +55,7 @@ forDataset <- function(id, idn, layers = NULL, modid = 1) {
             herb = herb/tot
             bare = bare/tot
             rmask = round(raster::resample(rmask,tree))
+            
             mask = !is.na(tot + rmask)
         
             if (!is.na(rid)) mask = mask & ( rmask== rid)
@@ -92,10 +93,10 @@ forDataset <- function(id, idn, layers = NULL, modid = 1) {
     }
     mapply(forRegion, c(NaN, 1:9), realmNames)
 }
-obsLayers = list(list(1:2, 5, c(3:4), 8), list(1:2, 5, c(3:4), 8), 1:60)
-png("figs/VegDistTriangle.png", width = 7.2*11/4, height = 0.98*7.2 * sqrt(3) * 0.5 * 10/4,
+obsLayers = list(list(c(1:2, 5), c(3:4), 8), list(c(1:2, 5), c(3:4), 8), 1:60)
+png("figs/VegDistTriangle.png", width = 7.2*11/4, height = 1.1*7.2 * sqrt(3) * 0.5 * 10/4,
     res = 300, units = 'in')        
-    par(mfcol = c(10, 11), mar = rep(1, 4), oma = c(0.35, 0, 0, 0.3))
+    par(mfcol = c(10, 11), mar = rep(1, 4), oma = c(0.35, 0, 1, 0.3))
     mapply(forDataset, obss, names(obss), layers = obsLayers, SIMPLIFY = FALSE)
     lapply(1:4,  function(i) 
            mapply( forDataset, sims, names(sims),modid = i, SIMPLIFY = FALSE))
