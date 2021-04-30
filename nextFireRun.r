@@ -4,14 +4,16 @@ sourceAllLibs("../rasterextrafuns/rasterExtras/R/")
 sourceAllLibs("libs/")
 
 jules_out_dir = "/hpc/data/d05/cburton/jules_output/"
-outs = cbind("u-cb020_CTRL" = c(1),
-             "u-cb020_EXP" = c(0))
+outs = cbind("u-cb020_CTRL" = c(1, prior = FALSE),
+             "u-cb020_EXP" = c(0, prior = FALSE),
+             "xxs0.99999" = c(9E9, prior = TRUE))
 
 
 extent = c(-180, 180, -90, 90)
 pc_sample = 5
 
-param_trans = list("BL_av_BA" = c("fun" = modParamTrans.zeroInf, "ParamsGuess" = c(-1)))
+param_trans = list("BL_av_BA" = c("fun" = modParamTrans.zeroInf, "ParamsGuess" = c(-1)),
+                                  prior = list(prior.Uniform, 0, 1))
 
 variables = list("Burnt Area" = list(ObsOpenArgs   = list(obs = 'data/GFED4s_burnt_area.nc',
                                                            Layers = 1:24,
@@ -23,11 +25,20 @@ variables = list("Burnt Area" = list(ObsOpenArgs   = list(obs = 'data/GFED4s_bur
                                                            modScale = 60*60*24*30),
                                      OptFun = logitNormal))
 
-openJulesDat <- function(mod) {    
+openJulesDat <- function(mod) {   
+    openVar <- function(var, modin,...)
+        dat = do.call(openMod, c(modin, jules_out_dir, var$JulesOpenArgs, ...))  
+    if (substr(mod, 1, 2) =='xx') {
+        if (substr(mod, 3, 3) == "p") return(as.numeric(substr(mod, 3, nchar(mod))))
+        if (substr(mod, 3, 3) == "s") {
+            fill= as.numeric(substr(mod, 4, nchar(mod)))
+            dat = lapply(variables, openVar, colnames(outs)[1], 
+                         fill = fill, fileID2 = paste0('filled', fill))
+            #browser()
+        }
+    } else dat = lapply(variables, openVar, mod)
     #files = list.files(dir)
-    openVar <- function(var)
-        dat = do.call(openMod, c(mod, jules_out_dir, var$JulesOpenArgs))    
-    dat = lapply(variables, openVar)
+      
 }
 
 simss = lapply(colnames(outs), openJulesDat)
@@ -56,6 +67,10 @@ obss = lapply(variables, openObsi)
 
 calProbs <- function(sims) {
     calProb <- function(obs, sim, var) {
+        if (is.numeric(sim)) {
+            if (sim == 0) return(-1000000)
+            else return(log(sim))
+        }
         nl = min(nlayers(obs), nlayers(sim))
         grabV <- function(i, r) {
             mask = !is.na(r[[i]])& masks[[i]]
@@ -82,4 +97,27 @@ calProbs <- function(sims) {
 }
 
 ps = sapply(simss, calProbs)
+
+if (nrow(outs) ==2) {
+    x = seq(0, 1, 0.01)
+    params = param_trans[[1]]$fun(outs[1,])
+    
+
+    test = outs[2,]==1
+    nps = length(ps)
+    if (any(test)) {
+        fit = polyfix(params[test], ps[test], nps , params[!test], ps[!test])
+    } else fit = polyfit(params, ps, nps)
+    y = polyval(fit, x) * do.call(param_trans$prior[[1]], list(x, param_trans$prior[-1]))
+    xrange = range(c(params, x)); yrange = range(c(ps, y))
+    plot(xrange, yrange, type = 'n')
+    points(params[test], ps[test], pch = 19, col = 'blue')
+    points(params[!test], ps[!test], pch = 19, col = 'red')
+    lines(x, y)
+    browser()
+} else if (nrow(out)==1) {
+    browser()
+} else {
+    browser()
+}
 

@@ -1,12 +1,12 @@
-openMod <- function(mod, dir, varName, years, modScale, ...,
-                    levels = 1, layer = NULL, fileID = '') {
+openMod <- function(mod, dir, varName, years, modScale, ..., fill = NULL,
+                    levels = 1, layer = NULL, fileID = '', fileID2 = '') {
     
     if (!exists("extent") || is.null(extent)) extent = c(-180, 180, -90, 90)
     if (is.list(levels)) tLayers = paste(sapply(levels, paste0, collapse = '_'), collapse = '-')
         else tLayers = range(levels)
    
     tempFile = paste(c('temp/', paste(strsplit(mod, '/')[[1]], collapse = '_'),
-                     varName, range(years), tLayers, ..., fileID, extent, modScale, '.nc'),
+                     varName, range(years), tLayers, ..., fileID, fileID2, extent, modScale, '.nc'),
                      collapse = '-')
     cat("\nopening:", mod)
     cat("\n\tinto:", tempFile, "\n")
@@ -36,7 +36,7 @@ openMod <- function(mod, dir, varName, years, modScale, ...,
         dati = lapply(varNames, openVar)
         dat = dati[[1]]
         if (length(dati) > 1) for (d in dat[-1]) dat = dat + d
-        
+        if (!is.null(fill)) dat[!is.na(dat)] = fill
         dat = writeRaster(dat, file = tempFile, overwrite = TRUE)
     }
     if (!is.null(layer)) dat = dat[[layer]]
