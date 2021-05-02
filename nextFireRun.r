@@ -126,6 +126,7 @@ if (nrow(outs) ==2) {
     xrange = range(c(params, x)); yrange = range(c(ps, y))
     par(mfrow = c(2, 1))
     plot(xrange, yrange, type = 'n', xaxt = 'n', xlab = '', ylab = '')
+
     mtext.units(side = 2, line = 2, 'log(P(~beta~|Y))')
     mtext.units(side = 1, line = 2, 'log(P(~beta~))')
     
