@@ -1,14 +1,24 @@
+#########
+## cfg ##
+#########          
 graphics.off()
 library(raster)
 source("../gitProjectExtras/gitBasedProjects/R/sourceAllLibs.r")
 sourceAllLibs("../rasterextrafuns/rasterExtras/R/")
 sourceAllLibs("libs/")
+library(pracma)
+################
+## param list ##
+###############)#
 
 jules_out_dir = "/hpc/data/d05/cburton/jules_output/"
 outs = cbind("u-cb020_CTRL" = c(1, prior = FALSE),
              "u-cb020_EXP" = c(0, prior = FALSE),
              "u-cb020_EXP0.26" = c(0.26, prior = FALSE),
              "u-cb020_EXP1.29" = c(1.29, prior = FALSE),
+             "u-cb020_EXP1.20" = c(1.20, prior = FALSE),
+             "u-cb020_EXP0.58" = c(0.58, prior = FALSE),
+             "u-cb020_EXP0.14" = c(0.14, prior = FALSE),
              "xxs0.99999" = c(9E9, prior = TRUE))
 
 
@@ -102,10 +112,10 @@ calProbs <- function(sims) {
 
 ps = sapply(simss, calProbs)
 
+png("figs/parameter_opt.png", height = 7, width =7, res =300, units = 'in')
 if (nrow(outs) ==2) {
     x = seq(0, 1, 0.01)
     xf = x#logit(x)
-    params0 = params
     params = param_trans[[1]]$fun(outs[1,])
     
     test = is.na(outs[2,])
@@ -127,8 +137,8 @@ if (nrow(outs) ==2) {
     par(mfrow = c(2, 1))
     plot(xrange, yrange, type = 'n', xaxt = 'n', xlab = '', ylab = '')
 
-    mtext.units(side = 2, line = 2, 'log(P(~beta~|Y))')
-    mtext.units(side = 1, line = 2, 'log(P(~beta~))')
+    mtext.units(side = 2, line = 2, 'log(P(~beta~|Y) P(Y))')
+    mtext.units(side = 1, line = 2, '~beta~')
     
     labs = signif(param_trans[[1]]$funInverse(seq(0, 1, length.out = 7)),1)
     at = param_trans[[1]]$fun(labs)
@@ -173,7 +183,7 @@ if (nrow(outs) ==2) {
     likliMis = c()
     for (i in 1:length(xturn)) {
          
-        likliMis = c(likliMis, checkLikelyMissing(c(xturn[1:i], likiMis), c(yturn[1:i], rep(target, length(likiMis)))))
+        likliMis = c(likliMis, checkLikelyMissing(c(xturn[1:i], likliMis), c(yturn[1:i], rep(target, length(likliMis)))))
        
     }
     
@@ -187,7 +197,7 @@ if (nrow(outs) ==2) {
     plot(c(0, 1), c(0, 1), type = 'n', axes = FALSE, xlab = '', ylab = '')
     text.units(x = 0.01, y = 0.9, adj = 0,
          paste0("Best performance: ", outs[1,which.max(ps)],
-                "; log(P(~beta~|Y)) = ", round(max(ps))))
+                "; log(P(~beta~|Y) P(Y)) = ", round(max(ps))))
     text(x = 0.01, y = 0.7, adj = 0, "likley max(P) in order of preference:")
     
     tab1 = cbind(xturn, round(yturn))
@@ -208,4 +218,4 @@ if (nrow(outs) ==2) {
 } else {
     browser()
 }
-
+dev.off()
