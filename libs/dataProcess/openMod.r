@@ -1,5 +1,6 @@
 openMod <- function(mod, dir, varName, years, modScale, ..., fill = NULL,
-                    levels = 1, layer = NULL, fileID = '', fileID2 = '') {
+                    levels = 1, layer = NULL, fileID = '', fileID2 = '',
+                    temp_dir_move = NULL) {
     
     if (!exists("extent") || is.null(extent)) extent = c(-180, 180, -90, 90)
     if (is.list(levels)) tLayers = paste(sapply(levels, paste0, collapse = '_'), collapse = '-')
@@ -13,11 +14,26 @@ openMod <- function(mod, dir, varName, years, modScale, ..., fill = NULL,
     
     if (file.exists(tempFile)) dat = brick(tempFile)
     else {
-        files = list.files(paste0(dir, mod, '/'), full.names = TRUE)
-        if (fileID != '') files = files[grepl(fileID, files)]
-        fyr = substr(files, nchar(files)-6, nchar(files)-3)
-        if(length(years == 1)) years = c(years, years) 
-        files = files[apply( sapply(fyr, '==', years), 2, any)]
+        dir = paste0(dir, mod, '/')
+        listJfiles <- function(dir, years) {
+            files = list.files(dir, full.names = TRUE)
+            if (fileID != '') files = files[grepl(fileID, files)]
+            fyr = substr(files, nchar(files)-6, nchar(files)-3)
+            if(length(years == 1)) years = c(years, years) 
+            files = files[apply( sapply(fyr, '==', years), 2, any)] 
+        }
+        if (!is.null(temp_dir_move)) {
+            temp_dir_move = paste0(temp_dir_move, '/', mod, '/')
+            makeDir(temp_dir_move)
+            if (length(list.files(temp_dir_move)) == 0) {
+                files = listJfiles(dir, 1950:9999)
+                 
+                file.copy(files, temp_dir_move)
+            }
+            
+            dir = temp_dir_move
+        }
+        files = listJfiles(dir, years)
         
         varNames = strsplit(varName, ';')[[1]]
         openVar <- function(varName) {
