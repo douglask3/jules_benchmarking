@@ -6,20 +6,22 @@ library(raster)
 source("../gitProjectExtras/gitBasedProjects/R/sourceAllLibs.r")
 sourceAllLibs("../rasterextrafuns/rasterExtras/R/")
 sourceAllLibs("libs/")
+source("../gitProjectExtras/gitBasedProjects/R/makeDir.r")
 library(pracma)
 ################
 ## param list ##
 ###############)#
-
+modFacVar = 'frac'
 jules_out_dir = "/hpc/data/d05/cburton/jules_output/"
-outs = cbind("u-cb020_CTRL" = c(1, prior = FALSE),
-             "u-cb020_EXP" = c(0, prior = FALSE),
+outs = cbind("u-cb020_EXP4.61" = c(4.61, prior = FALSE),
              "u-cb020_EXP0.26" = c(0.26, prior = FALSE),
+             "u-cb020_EXP" = c(0, prior = FALSE),
+             "u-cb020_CTRL" = c(1, prior = FALSE),
              "u-cb020_EXP1.29" = c(1.29, prior = FALSE),
              "u-cb020_EXP1.20" = c(1.20, prior = FALSE),
              "u-cb020_EXP0.58" = c(0.58, prior = FALSE),
-             "u-cb020_EXP0.14" = c(0.14, prior = FALSE),
-             "xxs0.99999" = c(9E9, prior = TRUE))
+             "u-cb020_EXP0.14" = c(0.14, prior = FALSE))
+             #"xxs0.99999" = c(9E9, prior = TRUE))
 
 
 extent = c(-180, 180, -90, 90)
@@ -31,17 +33,29 @@ param_trans = list("BL_av_BA" = c("fun" = modParamTrans.zeroInf, "ParamsGuess" =
 
 variables = list("Burnt Area" = list(ObsOpenArgs   = list(obs = 'data/GFED4s_burnt_area.nc',
                                                            Layers = 1:24,
-                                                           annualAver = FALSE),
+                                                           annualAver = TRUE),
                                      JulesOpenArgs = list(years = 2001:2002,
-                                                           annualAver = FALSE,
+                                                           annualAver = TRUE,
                                                            fileID = 'ilamb',
                                                            varName = "burnt_area_gb",
                                                            modScale = 60*60*24*30),
-                                     OptFun = logitNormal))
+                                     OptFun = logitNormal),
 
+                 "Tree Cover" = list(ObsOpenArgs   = list(obs = 'data/TreeCover.nc',
+                                                           Layers = 1,
+                                                           annualAver = TRUE),
+                                     JulesOpenArgs = list(years = 2001:2002,
+                                                           annualAver = TRUE,
+                                                           fileID = 'ilamb',
+                                                           varName = "frac",
+                                                           levels = list(c(1:5, 12:13)),
+                                                           modScale = 1),
+                                     OptFun = logitNormal))
+temp_dir_move = "/data/dynamic/dkelley/jules_ES-UKESM1.1_runs"
 openJulesDat <- function(mod) {   
     openVar <- function(var, modin,...)
-        dat = do.call(openMod, c(modin, jules_out_dir, var$JulesOpenArgs, ...))  
+        dat = do.call(openMod, c(modin, jules_out_dir, var$JulesOpenArgs,
+                                 temp_dir_move = temp_dir_move,...))  
     if (substr(mod, 1, 2) =='xx') {
         if (substr(mod, 3, 3) == "p") return(as.numeric(substr(mod, 3, nchar(mod))))
         if (substr(mod, 3, 3) == "s") {
@@ -51,8 +65,9 @@ openJulesDat <- function(mod) {
             #browser()
         }
     } else dat = lapply(variables, openVar, mod)
+    
     #files = list.files(dir)
-      
+         
 }
 
 simss = lapply(colnames(outs), openJulesDat)
@@ -78,7 +93,6 @@ openObsi <- function(var)
 obss = lapply(variables, openObsi)
 obss = lapply(variables, openObsi)
 
-
 calProbs <- function(sims) {
     calProb <- function(obs, sim, var) {
         if (is.numeric(sim)) {
@@ -87,14 +101,15 @@ calProbs <- function(sims) {
         }
         nl = min(nlayers(obs), nlayers(sim))
         grabV <- function(i, r) {
-            mask = !is.na(r[[i]])& masks[[i]]
+            mask = masks[[i]]
             out = r[[i]][mask]
+            
             return(out)
         }
         grabVs <- function(r) {
             vName = paste0('temp/', filename.noPath(r, TRUE), maskName, '.csv')
             
-            if (file.exists(vName)) vs = read.csv(vName)[,1]
+            if (file.exists(vName) & F) vs = read.csv(vName)[,1]
             else {
                 vs = lapply(1:nl, grabV, r)
                 vs = unlist(vs)
@@ -103,11 +118,16 @@ calProbs <- function(sims) {
             return(vs)
         }
         maskName = filename.noPath(masks, TRUE)
-        vObs = grabVs(obs)        
-        vSim = grabVs(sim)
+        vObs = vObs0 =  grabVs(obs)        
+        vSim = vSim0 =  grabVs(sim)
+        
+        tst = !(is.na(vObs) | is.na(vSim))
+        vObs = vObs[tst]; vSim = vSim[tst]
         p = var$OptFun(vObs, vSim)
     }
-    ps = mapply(calProb, obss, sims, variables)   
+    ps = mapply(calProb, obss, sims, variables)  
+    #ps[1] = 0 
+    return(mean(ps))
 }
 
 ps = sapply(simss, calProbs)
