@@ -38,6 +38,7 @@ openMod <- function(mod, dir, varName, years, modScale, ..., fill = NULL,
         varNames = strsplit(varName, ';')[[1]]
         openVar <- function(varName) {
             openLvs <- function(level) {
+               
                 dat = layer.apply(files, process.jules.file, level, varName)
             
                 dat = datConvert(dat, modScale, ...)
@@ -50,6 +51,7 @@ openMod <- function(mod, dir, varName, years, modScale, ..., fill = NULL,
             return(dat)
         }
         dati = lapply(varNames, openVar)
+        
         dat = dati[[1]]
         if (length(dati) > 1) for (d in dat[-1]) dat = dat + d
         if (!is.null(fill)) dat[!is.na(dat)] = fill
