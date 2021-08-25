@@ -1,13 +1,13 @@
 optiPlot1D <- function() {    
     
-    x = seq(0, 0.9999999999999, paramDetail)
-    xf = logit(x)
-    xp = param_trans[[1]]$funInverse(x)
+    #######################################################
+    ## removing proior points if we have enough new ones ##
+    #######################################################
+    
     params = outs[1,]
     
     PriorTest = is.na(outs[2,]) | outs[2,]
     
-    #if (ncol(outs) <=3) outs[2,PriorTest] = TRUE else {
     if (sum(!PriorTest) >=3) {
         outs = outs[, !PriorTest]
         ps = ps[!PriorTest]
@@ -19,6 +19,12 @@ optiPlot1D <- function() {
     params = param_trans[[1]]$fun(params)  
     paramsF = logit(params)
 
+    ##############################
+    ## interoplating P(Y|beta)  ##
+    ##############################
+    x = seq(0, 0.9999999999999, paramDetail)
+    xf = logit(x)
+    xp = param_trans[[1]]$funInverse(x)
     weightedApprox <- function(x) {
         w = paramsF-x
         findP <- function(test, FUN) {
@@ -38,9 +44,9 @@ optiPlot1D <- function() {
     Py = log(do.call(param_trans$prior[[1]], list(xp, param_trans$prior[-1])))
     y = By + Py
     
-    ps = ps + log(do.call(param_trans$prior[[1]], list(paramsP, param_trans$prior[-1])))
-    ps[is.infinite(ps)] = min(y[!is.infinite(y)]) -1
-    ## new samples
+    ##########################
+    ## finding new samples  ##
+    ##########################
     P0 = exp(y - min(y[!is.infinite(y)])) 
     
     Y = X = rep(NaN, nNewParams)
@@ -52,11 +58,14 @@ optiPlot1D <- function() {
         X[i] = x[id]
         Y[i] = y[id]
     }
-        
-    #X = sample(1:length(x), size = nNewParams, replace = FALSE, prob = P)
-    #Y = y[X]; X = x[X]
     
-    
+    ##########################
+    ## plotting             ##
+    ##########################    
+    ps = ps + log(do.call(param_trans$prior[[1]], list(paramsP, param_trans$prior[-1])))
+    ps[is.infinite(ps)] = min(y[!is.infinite(y)]) -1
+
+    ## setting up plot
     xrange = range(c(params, x)); yrange = range(c(ps, y[!is.infinite(y)]))
     par(mfrow = c(2, 1))
     plot(xrange, yrange, type = 'n', xaxt = 'n', xlab = '', ylab = '')
@@ -68,6 +77,7 @@ optiPlot1D <- function() {
     at = param_trans[[1]]$fun(labs)
     axis(side = 1, at = at, label = labs)
 
+    ## adding samples
     points(params[PriorTest], ps[PriorTest], pch = 19, col = 'blue')
     points(params[!PriorTest], ps[!PriorTest], pch = 19, col = 'red')
 
@@ -87,7 +97,9 @@ optiPlot1D <- function() {
 
     mapply(function(x, wd) lines(c(x, x), c(-9E9, 9E9), lty = 3, lwd = wd, col = '#00000099'),
            X, seq(2, 0.1, length.out = length(X)))
-    
+    ############
+    ## legend ##
+    ############  
     par(mar = rep(0, 4))
     plot(c(0, 1), c(0, 1), type = 'n', axes = FALSE, xlab = '', ylab = '')
 
@@ -106,7 +118,9 @@ optiPlot1D <- function() {
     lines(c(0.9, 0.9), c(0.99, 0.8), lty = 3, col = '#00000099')
     text(0.93, 0.9, 'New samples', srt = 90, xpd = NA)
     
-    
+    ############################
+    ## sample/new sample info ##
+    ############################  
     text.units(x = 0.01, y = 0.83, adj = 0,
          paste0("Best performance: ", outs[1,which.max(ps)],
                 "; log(P(~beta~|Y) P(Y)) = ", round(max(ps))))
@@ -133,5 +147,5 @@ optiPlot1D <- function() {
     i2 = c(tail(i1, -1)-1, nNewParams)
     xS = seq(0, by = 0.33, length.out = length(i1))
     mapply(AddNews, xS, i1, i2)
-    
 }
+
