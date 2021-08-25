@@ -62,12 +62,24 @@ optiPlot1D <- function() {
     ##########################
     ## plotting             ##
     ##########################    
+    ps0 = ps
     ps = ps + log(do.call(param_trans$prior[[1]], list(paramsP, param_trans$prior[-1])))
-    ps[is.infinite(ps)] = min(y[!is.infinite(y)]) -1
+    ps[is.infinite(ps)] = min(y[!is.infinite(y)])
+
+    yt = y[!is.infinite(y)]
+    rescale2By <- function(x) {
+        test = !is.infinite(x)
+        minX = min(x[test])
+        x = x - minX
+        x = x / diff(range(x[test]))
+        x = x * diff(range(yt)) + min(yt)
+        x[!test] = min(yt)
+        x
+    }
 
     ## setting up plot
     xrange = range(c(params, x)); yrange = range(c(ps, y[!is.infinite(y)]))
-    par(mfrow = c(2, 1))
+    par(mfrow = c(2, 1), mar = c(3, 3.5, 1, 1))
     plot(xrange, yrange, type = 'n', xaxt = 'n', xlab = '', ylab = '')
 
     mtext.units(side = 2, line = 2, 'log(P(~beta~|Y) P(Y))')
@@ -78,32 +90,31 @@ optiPlot1D <- function() {
     axis(side = 1, at = at, label = labs)
 
     ## adding samples
-    points(params[PriorTest], ps[PriorTest], pch = 19, col = 'blue')
-    points(params[!PriorTest], ps[!PriorTest], pch = 19, col = 'red')
+    points(params[PriorTest], rescale2By(ps0[PriorTest]), pch = 4, col = 'red')
+    points(params[!PriorTest], rescale2By(ps0[!PriorTest]), pch = 19, col = 'red')
+    points(params[PriorTest], ps[PriorTest], pch = 4, col = 'black')
+    points(params[!PriorTest], ps[!PriorTest], pch = 19, col = 'black')
 
-    yt = y[!is.infinite(y)]
-    rescale2By <- function(x) {
-        test = !is.infinite(x)
-        minX = min(x[test])
-        x = x - minX
-        x = x / diff(range(x[test]))
-        x = x * diff(range(yt)) + min(yt)
-        x[!test] = min(yt) - 1
-        x
-    }
+    ## adding mapped postiriors
+    
     lines(x, rescale2By(y))
     lines(x, rescale2By(Py), lty = 2, col = 'blue')
     lines(x, rescale2By(By), lty = 2, col = 'red')
 
     mapply(function(x, wd) lines(c(x, x), c(-9E9, 9E9), lty = 3, lwd = wd, col = '#00000099'),
            X, seq(2, 0.1, length.out = length(X)))
+
     ############
     ## legend ##
     ############  
     par(mar = rep(0, 4))
     plot(c(0, 1), c(0, 1), type = 'n', axes = FALSE, xlab = '', ylab = '')
 
-    points(c(0.1, 0.1), c(0.98, 0.93), pch = 19, col = c('blue', 'red'))
+    
+    text.units(c(0.03), 1.05, c('P(Y|~beta~)'), adj = 0.67, xpd = NA)
+    text.units(c(0.1), 1.05, c('P(~beta~|Y)'), adj = 0.33, xpd = NA)
+    points(c(0.03, 0.03), c(0.98, 0.93), pch = c(4, 19), col = 'red')
+    points(c(0.1, 0.1), c(0.98, 0.93), pch = c(4, 19), col = 'black')
     text.units(c(0.12), c(0.98), c('Seed'), adj = 0)
     text.units(c(0.12), c(0.93), c('JULES run'), adj = 0)
 
@@ -123,7 +134,7 @@ optiPlot1D <- function() {
     ############################  
     text.units(x = 0.01, y = 0.83, adj = 0,
          paste0("Best performance: ", outs[1,which.max(ps)],
-                "; log(P(~beta~|Y) P(Y)) = ", round(max(ps))))
+                "; log(P(~beta~|Y) P(Y)) = ", round(max(ps), 2)))
     
     
     text(x = 0.01, y = 0.75, adj = 0, "New Parameters to test:")   
@@ -134,7 +145,7 @@ optiPlot1D <- function() {
     AddNews <- function(x, i1, i2) {
         i = i1:i2
         text(x = x + 0.05, y = 0.67, adj = 0, "Param.")
-        text.units(x = x + 0.15, y = 0.67, adj = 0, "log(P(~beta~|Y))")
+        text.units(x = x + 0.15, y = 0.67, adj = 0, "log(P(~beta~|Y) P(Y))")
     
         textTfun <- function(i, y, ...)
             text(i, adj = 0, y = y - seq(0, by = 0.05, length.out = length(i)),...)
