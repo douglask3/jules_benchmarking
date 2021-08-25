@@ -1,5 +1,9 @@
-logit <- function(x) {
-    x[x < 0.00000000001] = 0.00000000001
-    x[x > 0.99999999999] = 0.99999999999
-    log(x/(1-x))
+logit <- function(x, mn = 1E-50) {
+    #browser()
+    x[x < mn] = mn
+    x[x > (1-mn)] = 1-mn
+
+    out = log(x/(1-x))
+    out[out > -log(mn)] = -log(mn)
+    out
 }

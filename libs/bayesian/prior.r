@@ -4,3 +4,10 @@ prior.Uniform <- function(x, ps) {
     y[x > ps[[2]]] = 0
     return(y)
 }
+
+prior.LogNormal <- function(x, ps) {   
+    x = log(x)    
+    mu = log(ps[[1]])
+    y = dnorm(x, mu, ps[[2]])
+    return(y)
+}
