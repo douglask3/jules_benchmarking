@@ -119,19 +119,19 @@ optiPlot1D <- function() {
     
     AddNews <- function(x, i1, i2) {
         i = i1:i2
-        text(x = x + 0.05, y = 0.65, adj = 0, "Param.")
-        text.units(x = x + 0.15, y = 0.65, adj = 0, "log(P(~beta~|Y))")
+        text(x = x + 0.05, y = 0.67, adj = 0, "Param.")
+        text.units(x = x + 0.15, y = 0.67, adj = 0, "log(P(~beta~|Y))")
     
         textTfun <- function(i, y, ...)
             text(i, adj = 0, y = y - seq(0, by = 0.05, length.out = length(i)),...)
-        textTfun(paste0(tab1[i,1], '.'), , x = x, y = 0.5)
-        textTfun(tab1[i,2], x = 0.05 + x, y = 0.5)
-        textTfun(tab1[i,3], x = 0.15 + x, y = 0.5)
+        textTfun(paste0(tab1[i,1], '.'), , x = x, y = 0.6)
+        textTfun(tab1[i,2], x = 0.05 + x, y = 0.6)
+        textTfun(tab1[i,3], x = 0.15 + x, y = 0.6)
     
     }
     i1 = seq(1, nNewParams, by = 10)
     i2 = c(tail(i1, -1)-1, nNewParams)
     xS = seq(0, by = 0.33, length.out = length(i1))
     mapply(AddNews, xS, i1, i2)
-    browser()
+    
 }
