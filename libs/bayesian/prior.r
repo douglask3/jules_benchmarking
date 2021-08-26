@@ -11,3 +11,10 @@ prior.LogNormal <- function(x, ps) {
     y = dnorm(x, mu, ps[[2]])
     return(y)
 }
+
+prior.LogitNormal <- function(x, ps) {   
+    x = logit(x)    
+    mu = logit(ps[[1]])
+    y = dnorm(x, mu, ps[[2]])
+    return(y)
+}
