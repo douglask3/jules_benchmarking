@@ -80,6 +80,7 @@ unitExpressionSearches <- list(
     list("PET"    , bquote({}[PET])      ),
     list("AET"    , bquote({}^AET)       ),
     list("_max"   , bquote({}[max])      ),
+    list("BL"     , bquote({}[BL] )      ),
     list("_0"     , bquote({}[0])        ),
     list("_W"     , bquote({}[W])        ),
     list("_omega" , bquote({}[omega])    ),
