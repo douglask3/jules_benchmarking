@@ -78,7 +78,7 @@ optiPlot2D <- function() {
     ## finding new samples  ##
     ##########################
     
-    P0 = exp(y - min(y[!is.infinite(y)])) 
+    P0 = exp(y - mean(y[!is.infinite(y)])) 
     P0[is.infinite(P0)] = 0
     
     xs = cbind(x, rep(x, each = length(x)))
@@ -91,8 +91,10 @@ optiPlot2D <- function() {
             
             min(dist, na.rm = TRUE)
         } 
-        P = P0 * apply(xs, 1, weigthDist)    
+        P = P0 * apply(xs, 1, weigthDist)^2   
+        
         id = sample(1:length(P), size = 1, prob = P)
+        
         XY[i,] = c(y[id], xs[id,])
     }
     ##########################
