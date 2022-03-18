@@ -8,31 +8,34 @@ sourceAllLibs('../rasterextrafuns/rasterPlotFunctions/R/')
 sourceAllLibs("../rasterextrafuns/rasterExtras/R/")
 sourceAllLibs("libs/")
 source("../gitProjectExtras/gitBasedProjects/R/makeDir.r")
+sourceAllLibs("../gitProjectExtras/gitBasedProjects/R/")
 library(pracma)
 ################
 ## param list ##
 ################
 modFacVar = 'frac'
 jules_out_dir = "/hpc/data/d05/cburton/jules_output/"
-outs = cbind("u-cb020_EXP4.61" = c(4.61, 0.1, prior = FALSE),
-             "u-cb020_EXP0.26" = c(0.26, 0.2, prior = FALSE),
-             "u-cb020_EXP" = c(0, 0.3, prior = FALSE),
+outs = cbind("u-cb020_EXP4.61" = c(4.61, 0.4, prior = FALSE),
+             "u-cb020_EXP0.26" = c(0.26, 0.4, prior = FALSE),
+             "u-cb020_EXP" = c(0, 0.4, prior = FALSE),
              "u-cb020_CTRL" = c(1, 0.4, vvprior = FALSE),
-             "u-cb020_EXP1.29" = c(1.29, 0.9, prior = FALSE),
-             "u-cb020_EXP1.20" = c(1.20, 0.6, prior = FALSE),
-             "u-cb020_EXP0.58" = c(0.58, 0.7, prior = FALSE),
-             "u-cb020_EXP0.14" = c(0.14, 0.8, prior = FALSE),
+             "u-cb020_EXP1.29" = c(1.29, 0.4, prior = FALSE),
+             "u-cb020_EXP1.20" = c(1.20, 0.4, prior = FALSE),
+             "u-cb020_EXP0.58" = c(0.58, 0.4, prior = FALSE),
+             "u-cb020_EXP0.14" = c(0.14, 0.4, prior = FALSE),
+             "u-cb020_EXP"     = c(0.72, 0.11, prior = FALSE),
+             "u-cb020_EXP0.58" = c(0.52, 0.65, prior = FALSE),
              "xxp0.0" = c(0.0, 0.5, prior = TRUE),
              "xxp0.0" = c(9E9, 0.5, prior = TRUE))
-outs[2,] =runif(ncol(outs), 0, 1) 
-outs[2,] = 0.4
+#outs[2,] =runif(ncol(outs), 0, 1) 
+#outs[2,] = 0.4
 extent = c(-180, 180, -90, 90)
 pc_sample = 5
 
 param_trans = list("av_BA~BL~" = list(c("fun" = modParamTrans.zeroInf, "ParamsGuess" = c(-1),
                                        "funInverse" = modParamTrans.zeroInf.inverse),
                                         prior = list(prior.LogNormal, 1, 5)),
-                   "gBurn~BL~" = list(c("fun" = modParamTrans.zeroOne, "ParamsGuess" = c(-1),
+                   "Fmort~BL~" = list(c("fun" = modParamTrans.zeroOne, "ParamsGuess" = c(-1),
                                        "funInverse" = modParamTrans.zeroOne.inverse),
                                         prior = list(prior.LogitNormal, 0.4, 20))) #list(prior.Uniform, 0, 1)
 
@@ -58,7 +61,7 @@ variables = list("Burnt Area" = list(ObsOpenArgs   = list(obs = 'data/GFED4s_bur
 temp_dir_move = "/data/dynamic/dkelley/jules_ES-UKESM1.1_runs"
 
 paramDetail = 0.01
-nNewParams = 30
+nNewParams = 10
 
 ################
 ## Open JULES ##
