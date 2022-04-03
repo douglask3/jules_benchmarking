@@ -99,7 +99,6 @@ doPlot.latAv <- function(x, lats, covs, BAs, BAscale, name = '', add = FALSE,...
     }
     
     if (length(BAs)==1) {
-       
         col = "black"
         density = 30
     }  else {
@@ -114,26 +113,24 @@ doPlot.latAv <- function(x, lats, covs, BAs, BAscale, name = '', add = FALSE,...
 }
 
 
-plotModObs <- function(obs, obsName, obsLayers, ModLevels, years, axis, cols,
-                       plotLegT = TRUE, ...) {
-    
-    if (plotLegT) {
-        plot.new()
-        legend("center", col = cols, legend = names(cols), pch = 19, pt.cex = 3, bty = 'n',                     horiz = TRUE)
-    }
-
+plotModObs <- function(obs, obsName, obsLayers, ModLevels, years, cols, ...,
+                       plotFUN = plot.latAv) {
     years <<- years
     c(mods, mod):= openModsFromDir(dirs, years, ModLevels, extent)
+    
+    obs = raster::resample(obs, mod[[1]][[1]])
+    modBA = lapply(mods, openMod, dirs[2],'burnt_area_gb', 2001:2005, 1, extent = extent,  TRUE)
+    obsBA = openObs(burntAreaFile, 1:12, 1, modEG = modBA[[1]], TRUE); cat("\n")
+    
+    plotFUN(mod, modBA, mods, obs, obsBA, obsName, cols, ...)
+}
+
+plot.latAv <- function(mod, modBA, mods, obs, obsBA, obsName, cols, axis, ...) {
+    plot.new()
+    legend("center", col = cols, legend = names(cols), pch = 19, pt.cex = 3, bty = 'n',                     horiz = TRUE)
 
     lats = yFromCell(mod[[1]][[1]], 1:length(mod[[1]][[1]][[1]]))
     x = sort(unique(lats))
-    
-    obs = raster::resample(obs, mod[[1]][[1]])
-    modBA = lapply(mods, openMod, dirs[2],
-                   'burnt_area_gb', 2001:2005, 1, extent = extent,  TRUE)
-    obsBA = openObs(burntAreaFile, 1:12, 1,
-                    modEG = modBA[[1]], TRUE); cat("\n")
-    
     sec2yr = 60*60*24*365; colsT = make.transparent(cols, 0.8)
     doPlot.latAv(x, lats, mod[[1]], NULL, sec2yr, cols = cols, ...)        
     doPlot.latAv(x, lats, mod[[1]], NULL, sec2yr, cols = colsT, add = TRUE, ...)
@@ -155,12 +152,14 @@ plotModObs <- function(obs, obsName, obsLayers, ModLevels, years, axis, cols,
     axis(4, at = seq(0, 100, 20), labels =seq(0, 100, 20)/5)
     mtext(side = 1, 'Latitude', line = 2)
 }
+
+
 png("figs/ISIMIP_latAV.png", height = 9, width = 5, units = 'in', res = 300)#
     layout((1:4), heights = c(0.3,1, 1, 1))
     par( mar = rep(0.75, 4), oma = rep(3.5, 4))
     
     mapply(plotModObs, obss, names(obss),  obsLayers, ModLevels, years_in, cols = cols,
-          axis = axisS)
+          axis = axisS, MoreArgs = list(plotFUN = plot.latAv))
     mtext(outer = TRUE, side = 2, 'Cover (%)', line  = 2)
     mtext(outer = TRUE, side = 4, 'Burnt area (%)', line  = 2)
     #mtext(outer = TRUE, side = 1, 'Latitude', line = -3)
