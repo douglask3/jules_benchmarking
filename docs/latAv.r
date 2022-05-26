@@ -116,8 +116,15 @@ doPlot.latAv <- function(x, lats, covs, BAs, BAscale, name = '', add = FALSE,...
 plotModObs <- function(obs, obsName, obsLayers, ModLevels, years, cols, ...,
                        plotFUN = plot.latAv) {
     years <<- years
-    c(mods, mod):= openModsFromDir(dirs, years, ModLevels, extent)
-    
+    FUN <- function(...) {
+        c(mods, mod):= openModsFromDir(...)
+        mod = lapply(mod, function(i) i[[1]])
+            
+        return(list(mods, mod))
+    }
+    c(mods, modNF):= FUN(dirs[1], years, ModLevels, extent)
+    c(mods, modF):= FUN(dirs[2], years, ModLevels, extent) 
+    mod = list(modNF, modF)
     obs = raster::resample(obs, mod[[1]][[1]])
     modBA = lapply(mods, openMod, dirs[2],'burnt_area_gb', 2001:2005, 1, extent = extent,  TRUE)
     obsBA = openObs(burntAreaFile, 1:12, 1, modEG = modBA[[1]], TRUE); cat("\n")
@@ -128,10 +135,11 @@ plotModObs <- function(obs, obsName, obsLayers, ModLevels, years, cols, ...,
 plot.latAv <- function(mod, modBA, mods, obs, obsBA, obsName, cols, axis, ...) {
     plot.new()
     legend("center", col = cols, legend = names(cols), pch = 19, pt.cex = 3, bty = 'n',                     horiz = TRUE)
-
+    
     lats = yFromCell(mod[[1]][[1]], 1:length(mod[[1]][[1]][[1]]))
     x = sort(unique(lats))
     sec2yr = 60*60*24*365; colsT = make.transparent(cols, 0.8)
+    
     doPlot.latAv(x, lats, mod[[1]], NULL, sec2yr, cols = cols, ...)        
     doPlot.latAv(x, lats, mod[[1]], NULL, sec2yr, cols = colsT, add = TRUE, ...)
     mtext("Model without fire", side = 3, line = -2, adj = 0.1)
@@ -139,6 +147,7 @@ plot.latAv <- function(mod, modBA, mods, obs, obsBA, obsName, cols, axis, ...) {
         
     axis(3, at = xat)  
     axis(4, at = seq(0, 100, 20), labels =seq(0, 100, 20)/5)
+    
     doPlot.latAv(x, lats, mod[[2]], modBA, sec2yr, cols = cols, ...)
     doPlot.latAv(x, lats, mod[[2]], modBA, sec2yr, cols = colsT,  add = TRUE,  ...)
     mtext("Model with fire", side = 3, line = -2, adj = 0.1)
@@ -152,8 +161,7 @@ plot.latAv <- function(mod, modBA, mods, obs, obsBA, obsName, cols, axis, ...) {
     axis(4, at = seq(0, 100, 20), labels =seq(0, 100, 20)/5)
     mtext(side = 1, 'Latitude', line = 2)
 }
-
-
+if (T) {
 png("figs/ISIMIP_latAV.png", height = 9, width = 5, units = 'in', res = 300)#
     layout((1:4), heights = c(0.3,1, 1, 1))
     par( mar = rep(0.75, 4), oma = rep(3.5, 4))
@@ -164,6 +172,89 @@ png("figs/ISIMIP_latAV.png", height = 9, width = 5, units = 'in', res = 300)#
     mtext(outer = TRUE, side = 4, 'Burnt area (%)', line  = 2)
     #mtext(outer = TRUE, side = 1, 'Latitude', line = -3)
 dev.off()
+}
+
+regionMask = raster('data/biomAssigned.nc')
+regionMask[is.na(regionMask)] = 0
+plot.vegMix <- function(mod, modBA, mods, obs, obsBA, obsName, cols, axis, ...) {
+    browser()
+    regionMask = raster::resample(regionMask, mod[[1]][[1]])
+    xbin = seq(0, 100, )/100
+    xb = xbin[-1] - diff(xbin)
+        dev.new()
+    forRegion <- function (id) {
+        mask = regionMask == id
+        
+        fracQuant <- function(r) {
+            tot = sum(r)
+           
+            r = r/tot
+            vals = r[[1:3]][mask]
+            vals = vals[sample(1:nrow(vals), size = min(c(1000, nrow(vals))), replace = FALSE),]
+             
+            #tot = apply(vals, 1, sum)
+
+            for (i in 2:ncol(vals)) 
+                vals[, i] = (vals[, i] + vals[, i-1])
+            
+            binMakeupPlot <- function(i) {
+                b1 = xbin[i]; b2 = xbin[i-1]
+                if (b2 == 0) b2 = -1
+                if (b1 == 1) b1 = 2
+                index = which(vals[,3] >= b2 & vals[,3] <= b1)
+                  
+                addLine <- function(j) {
+                    forLine <- function(v, col) {
+                        x = id + c(-1, 1) * wds[i-1] * v/vals[j, 3]
+                        if (vals[j, 3] == 0) vals[j,3] =  vals[j, 3] + runif(1, -0.01, 0.01)
+                        #if (id == 8) browser()
+                        lines(x, rep(vals[j, 3], 2)^4, col = col, lwd = 0.1)
+                    }
+                    mapply(forLine, rev(vals[j,]), cols[-1])
+                }
+                sapply(index, addLine)
+            }
+
+            wds = hist(vals[,3], breaks = xbin, plot = FALSE)$density
+            wds = 0.5*wds / max(wds)            
+
+            vals = sapply(2:length(xbin), binMakeupPlot)
+           
+            return()
+
+            vals = apply(vals, 2, function(x)
+                            hist(x, breaks = xbin/100, plot = FALSE)[['counts']])
+
+            vals = matrix2list(vals)
+            
+            mv = max(unlist(vals))
+            addPoly <- function(vs, col) {
+                browser()
+            }
+            mapply(addPoly, rev(vals), cols[-1])
+            browser()
+        }
+        extractFrac <- function(rs) 
+            layer.apply(rs, fracQuant)
+        
+        #vmod = lapply(mod, extractFrac)
+        extractFrac(mod[[1]])
+        #browser()
+    }
+    ids = unique(regionMask)[-1]
+    plot(range(ids) + c(-0.5, 0.5), range(xbin))
+    lapply(ids, forRegion)
+    browser()
+}
 
 
-axisS
+png("figs/ISIMIP_vegFracs.png", height = 9, width = 5, units = 'in', res = 300)#
+    layout((1:4), heights = c(0.3,1, 1, 1))
+    par( mar = rep(0.75, 4), oma = rep(3.5, 4))
+    
+    mapply(plotModObs, obss, names(obss),  obsLayers, ModLevels, years_in, cols = cols,
+          axis = axisS, MoreArgs = list(plotFUN = plot.vegMix))
+    mtext(outer = TRUE, side = 2, 'Cover (%)', line  = 2)
+    mtext(outer = TRUE, side = 4, 'Burnt area (%)', line  = 2)
+    #mtext(outer = TRUE, side = 1, 'Latitude', line = -3)
+dev.off()
