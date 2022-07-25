@@ -1,7 +1,9 @@
+sourceAllLibs("../benchmarkmetrics/benchmarkMetrics/R/")
 
 
 runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits, 
-                                ..., FUN = NME, nullFUN = null.NME, diffFUN = minusStandard,
+                                ..., mod_dirs = NULL, 
+                                FUN = NME, nullFUN = null.NME, diffFUN = minusStandard,
                                 ModLevels = 1, 
                                 plotFun = plotStandardMap, legendFun = StandardLegend,
                                 extend_max = TRUE, extend_min = FALSE,
@@ -10,11 +12,13 @@ runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits,
         units = 'in', res = 300)
     par(mfcol = c(length(obss)+2, length(mods)+1), mar = rep(0, 4))
     plot.new()
-
     
-    openYears <- function(year) 
-        lapply(mods, openMod, dir, varName, year, modScale, levels = ModLevels, ...)
-
+    if (is.null(mod_dirs)) mod_dirs = rep(dir, length(mods)) 
+    openYears <- function(year) {
+        
+        mapply(openMod, mods, mod_dirs, 
+               MoreArgs = list(varName, year, modScale, levels = ModLevels, ...))
+    }
     #mods = openMod(dir, mod, varName, year, TRUE) * modScale
     mods_names = mods
     mods = lapply(years, openYears)
@@ -25,6 +29,8 @@ runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits,
     
     obss = mapply(openObs, obss, obsLayers, obsScale,
                   MoreArgs = list(modEG = modsEG, ...))
+    
+    
     if (F) {
     mapply(plotFun, obss, obs_names,
            MoreArgs = list(cols = cols, limits = limits))
@@ -59,10 +65,16 @@ runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits,
         test = obs> 9E9
         obs[test] = NaN
         mod[test] = NaN
+        
         if ((nlayers(obs)+1) == nlayers(mod)) obs = addLayer(obs, 1 - sum(obs))
+        #mod[[1]] = mod[[1]] * 0.8
+        
         scores = FUN( obs, mod, w = w)
-        if (class(scores) != "numeric") scores = score(scores)
-        null = nullFUN(obs, n = 5)
+        if (class(scores) != "numeric") {
+            sc = try(score(scores), silent = TRUE)
+            if ( class(sc) == "try-error") scores = scores[[1]] else scores = sc
+        }
+        null = nullFUN(matrix(obs[!is.na(obs)]), n = 5)
         
         null = c(summary(null)[1:2], summary(null)[3] + c(-1, 1) * summary(null)[4])
         if (length(scores) == 1) out = t(c(null, scores))
@@ -71,6 +83,7 @@ runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits,
     }
     
     score = mapply(function(obs, mod) lapply(mod, NMEout, obs), obss, mods)
+    
     if (is.null(dim(score)) && length(score) == 1) {
         scoreO = score[[1]]
     } else {

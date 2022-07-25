@@ -1,10 +1,19 @@
+graphics.off()
 source("cfg.r")
 
-dir = '../jules_outputs/'
+mod_dirs = c("/hpc/data/d01/hadcam/jules_output/", "/hpc/data/d05/cburton/jules_output/")
 
-mods = c('u-bi607_Hist_new/', 'u-bi607_Hist_NF_new/')
+mods = c('ALL_u-bk886_isimip_0p5deg_origsoil_dailytrif/', 'u-cf137_TEST-LowMort/')
+isimip_mods = c("GFDL-ESM2M", "HADGEM2-ES", "IPSL-CM5A-LR", "MIROC5")
+
+mods = paste0(rep(mods, each = 4), isimip_mods, '/')
+mod_dirs = rep(mod_dirs, each = 4)
+
 varName = 'frac'
 modScale = 1#60*60*24*360
+modFracVar = 'frac'
+
+stream = '.ilamb.'
 
 dir_dat = "../fireMIPbenchmarking/data/benchmarkData/"
 obss = list("vegfrac_refLC_refCW.nc", c("treecover2000-2014.nc", "nontree2000-2014.nc"))
@@ -29,32 +38,37 @@ names(obss) = 'CCI'
 obsLayers = list(list(1:2, 5, 3:4, 8))
 years = years[1]
 obsScale = 1
-score_cciLF = runComparison(mods, obss, 'figs/vegCover_aa.png', 
-                         ModLevels = list(1:5, 12:13, 6:11, 16),
-                         FUN = MM, nullFUN = null.MM,
-                         cols_aa, limits_aa, dcols_aa, dlimits_aa, TRUE)
+#score_cciLF = runComparison(mods, obss, 'figs/vegCover_aa.png', 
+#                         ModLevels = list(1:5, 12:13, 6:11, 16),
+#                         mod_dirs = mod_dirs, stream = stream,
+#                         FUN = MM, nullFUN = null.MM,
+#                         cols_aa, limits_aa, dcols_aa, dlimits_aa, TRUE)
 
 obsLayers = list(list(1:2, c(3:5, 8)))
 score_cciTR = runComparison(mods, obss, 'figs/vegCover_aa.png', 
                          ModLevels = list(1:5, c(12:13, 6:11, 16)),
+                         mod_dirs = mod_dirs, stream = stream,
                          FUN = MM, nullFUN = null.MM,
                          cols_aa, limits_aa, dcols_aa, dlimits_aa, cover = TRUE)
 
 obsLayers = list(list(c(1:2, 5), c(3:4, 8)))
 score_cciWD = runComparison(mods, obss, 'figs/vegCover_aa.png', 
                          ModLevels = list(c(1:5,12:13), c(6:11, 16)),
+                         mod_dirs = mod_dirs, stream = stream,
                          FUN = MM, nullFUN = null.MM,
                          cols_aa, limits_aa, dcols_aa, dlimits_aa, cover = TRUE)
 
 obsLayers = list(list(c(3:4), c(1:2, 5, 8)))
 score_cciGS = runComparison(mods, obss, 'figs/vegCover_aa.png', 
                          ModLevels = list(c(6:11), c(1:5,12:13, 16)),
+                         mod_dirs = mod_dirs, stream = stream,
                          FUN = MM, nullFUN = null.MM,
                          cols_aa, limits_aa, dcols_aa, dlimits_aa, cover = TRUE)
 
 obsLayers = list(list(c(8), c(1:5)))
 score_cciBG = runComparison(mods, obss, 'figs/vegCover_aa.png', 
                          ModLevels = list(c(16), c(1:5,12:13, 6:11)),
+                         mod_dirs = mod_dirs, stream = stream,
                          FUN = MM, nullFUN = null.MM,
                          cols_aa, limits_aa, dcols_aa, dlimits_aa, cover = TRUE)
 
@@ -68,6 +82,7 @@ obsLayers = list(1:168)
 obsScale = 1/100
 score_vcfLF = runComparison(mods, obss, 'figs/vegCover_aa.png', 
                          ModLevels = list(c(1:5, 12:13), 6:11, 16),
+                         mod_dirs = mod_dirs, stream = stream,
                          FUN = MM, nullFUN = null.MM,
                          cols_aa, limits_aa, dcols_aa, dlimits_aa, TRUE)
 
@@ -75,6 +90,7 @@ obss = list(VCF = paste0(dir_dat, c("treecover2000-2014.nc")))
 obsScale = 1/80
 score_vcfWD = runComparison(mods, obss, 'figs/vegCover_aa.png', 
                          ModLevels = list(c(1:5, 12:13), c(6:11, 16)),
+                         mod_dirs = mod_dirs, stream = stream,
                          FUN = MM, nullFUN = null.MM,
                          cols_aa, limits_aa, dcols_aa, dlimits_aa, TRUE)
 

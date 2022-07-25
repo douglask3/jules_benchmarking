@@ -1,8 +1,16 @@
 source("cfg.r")
 
-dir = '../jules_outputs/'
+mod_dirs = c("/hpc/data/d01/hadcam/jules_output/", "/hpc/data/d05/cburton/jules_output/")
 
-mods = c('u-bi607_Hist_new/', 'u-bi607_Hist_NF_new/')
+mods = c('ALL_u-bk886_isimip_0p5deg_origsoil_dailytrif/', 'u-cf137/')
+isimip_mods = c("GFDL-ESM2M", "HADGEM2-ES", "IPSL-CM5A-LR", "MIROC5")
+
+mods = paste0(rep(mods, each = 4), isimip_mods, '/')
+mod_dirs = rep(mod_dirs, each = 4)
+
+
+#mods = c('u-bi607_Hist_new/', 'u-bi607_Hist_NF_new/')
+
 varName = 'cv'
 modScale = 12#60*60*24*360
 
@@ -14,7 +22,7 @@ obsLayers = list(1, 1)
 obsScale = c(1, 1/45)
 
 extent = c(-90, -30, -60, 15)
-#extent = c(-180, 180, -90, 90)
+extent = c(-180, 180, -90, 90)
 limits_aa = c(0, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50)*10                
 cols_aa =c('#fffbf7','#ecf0e2','#d0e6d1','#a6dbbd','#67cfa9','#36c090',
             '#028a81','#016c59','#014636')
@@ -50,7 +58,9 @@ limits_modal = c(1, 1.1, 1.2, 1.5, 2)
 dcols_modal = c('#8e0152','#c51b7d','#de77ae','#f1b6da','#fde0ef','#f7f7f7','#e6f5d0','#b8e186','#7fbc41','#4d9221','#276419')
 dlimits_modal = c(-1, -0.5, -0.2, -0.1, 0.1, 0.2, 0.5, 1)
 
-score_aa = runComparison(mods, obss, 'figs/cveg_aa.png', 
+stream = '.ilamb.'
+
+score_aa = runComparison(mods, obss, 'figs/cveg_aa.png', mod_dirs = mod_dirs, stream = stream,
                                cols_aa, limits_aa, dcols_aa, dlimits_aa, TRUE)
 
 #score_tC = runComparison(mods, obss, 'figs/burnt_area_tC.png',

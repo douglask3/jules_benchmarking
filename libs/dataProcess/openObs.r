@@ -14,25 +14,30 @@ openObs <- function(obs, Layers, scale, modEG, ..., layer = NULL) {
         
         openFile <- function(file) {
             obs = brick(file)
-        
+            
             openLayer <- function(Layer) {
                 obs = obs[[Layer]]
-                obs = convert_pacific_centric_2_regular(obs)     
+                if (!all(extent(obs)[1:2] == c(-180, 180)))
+                    obs = convert_pacific_centric_2_regular(obs)     
                      
                 obs = datConvert(obs, scale, modEG = modEG[[1]], ...)
                 #obs[is.na(modEG)] = NaN
             
                 return(obs)
             }
+            
             if (is.list(Layers)) obs = layer.apply(Layers, openLayer) else
                 obs = openLayer(Layers)
             return(obs)
         }
+        
         if (length(obs) == 1) obs = openFile(obs) else obs = layer.apply(obs, openFile)
         
         writeRaster(obs, file = tempFile, overwrite = TRUE)
     }
+    
     if (!is.null(layer)) obs = obs[[layer]]
     if (nlayers(obs) == 1) obs = obs[[1]]
+    #browser()   
     return(obs)
 }
