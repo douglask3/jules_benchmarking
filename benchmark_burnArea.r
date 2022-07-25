@@ -1,22 +1,26 @@
 source("cfg.r")
 
-dir = '../jules_outputs/'
 
+dir = "/hpc/data/d05/cburton/jules_output/"
+isimip_mods = c("GFDL-ESM2M", "HADGEM2-ES/", "IPSL-CM5A-LR", "MIROC5")
 
 mods = c('u-bw214', 'u-by849', 'u-by851')
 mods = c(paste0('u-by276/', c('gfdl', 'hadgem2', 'ipsl', 'miroc5')), 'u-bw214', 'u-by851')
+mods = c(paste0('u-cf137/', isimip_mods))
 varName = 'burnt_area_gb'
 modScale = 60*60*24*360*100
 
+stream = '.ilamb.'
+
 obss = paste0("../fireMIPbenchmarking/data/benchmarkData/",
-              c("GFED4s_v2.nc", "../GFED4.fBA.r0d5.1995.2013.nc", "MCD45.nc", "meris_v2.nc",
+              c("GFED4s_v2.nc", "GFED4.nc", "MCD45.nc", "meris_v2.nc",#../GFED4.fBA.r0d5.1995.2013.nc"
                 "MODIS250_q_BA_regridded0.5.nc"))
 
 names(obss) = paste0(c("GFED4s", "GFED4", "MCD45", "Meris", "CCI"), '_0.5')
 years = list(1998:2014, 1996:2012, 2001:2013, 2006:2012, 2001:2013)
 obsLayers = list(1:204, 8:204, 1:156, 1:84, 1:156)
-years = list(1998:2006, 1996:2006, 2001:2006, 2005:2006, 2001:2006)
-obsLayers = list(1:108, 8:140, 1:72, 1:12, 1:72)
+#years = list(1998:2006, 1996:2006, 2001:2006, 2005:2006, 2001:2006)
+#obsLayers = list(1:108, 8:140, 1:72, 1:12, 1:72)
 obsScale = 12*100
 
 limits_aa = c(0, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50)                
@@ -55,35 +59,35 @@ dcols_modal = c('#8e0152','#c51b7d','#de77ae','#f1b6da','#fde0ef','#f7f7f7','#e6
 dlimits_modal = c(-1, -0.5, -0.2, -0.1, 0.1, 0.2, 0.5, 1)
 
 extent = c(-90, -30, -60, 15)
-#extent = c(-180, 180, -90, 90)
-score_aa = runComparison(mods, obss, 'figs/burnt_area_aa.png', 
+extent = c(-180, 180, -90, 90)
+score_aa = runComparison(mods, obss, 'figs/burnt_area_aa.png', stream = stream,
                                cols_aa, limits_aa, dcols_aa, dlimits_aa, TRUE)
 
 #score_tC = runComparison(mods, obss, 'figs/burnt_area_tC.png',
 #                              cols_tr, limits_tr, dcols_tr, dlimits_tr, 
 #                              FALSE, TRUE, extend_min = TRUE)
-
+#
 #score_tT = runComparison(mods, obss, 'figs/burnt_area_tT.png',
 #                              cols_tr, limits_tr, dcols_tr, dlimits_tr, 
 #                              FALSE, FALSE, TRUE, plotFun = plotTrendLogged, diffFUN = logDiff)
-#
-score_ph = runComparison(mods, obss, 'figs/burnt_area_ph.png', 
-                              cols_phase, limits_phase, dcols_phase, dlimits_phase,
-                              FALSE, FALSE, FALSE, TRUE,
-                              FUN = MPD_only, nullFUN = null.MPD_only,
-                              diffFUN = phaseDiff,
-                              legendFun = SeasonLegend, layer = 1)
 
-score_cn = runComparison(mods, obss, 'figs/burnt_area_cn.png', 
-                              cols_conc, limits_conc, dcols_conc, dlimits_conc,
-                              FALSE, FALSE, FALSE, TRUE, layer = 2)
+#score_ph = runComparison(mods, obss, 'figs/burnt_area_ph.png', stream = stream,
+#                              cols_phase, limits_phase, dcols_phase, dlimits_phase,
+#                              FALSE, FALSE, FALSE, TRUE,
+#                              FUN = MPD_only, nullFUN = null.MPD_only,
+ #                             diffFUN = phaseDiff,
+ #                             legendFun = SeasonLegend, layer = 1)
 
-score_md = runComparison(mods, obss, 'figs/burnt_area_md.png', 
-                              cols_modal, limits_modal, dcols_modal, dlimits_modal,
-                              FALSE, FALSE, FALSE, TRUE, layer = 3)
+#score_cn = runComparison(mods, obss, 'figs/burnt_area_cn.png', stream = stream,
+#                              cols_conc, limits_conc, dcols_conc, dlimits_conc,
+#                              FALSE, FALSE, FALSE, TRUE, layer = 2)#
+
+#score_md = runComparison(mods, obss, 'figs/burnt_area_md.png', stream = stream,
+#                              cols_modal, limits_modal, dcols_modal, dlimits_modal,
+#                              FALSE, FALSE, FALSE, TRUE, layer = 3)
 
 out = mapply(function(i, j) cbind(j, rownames(i), round(i,2)),
-             list(score_aa, score_ph, score_cn, score_md),
-             c("Annual average", "Phase", "Concentraion", "Modality"))
+             list(score_aa, score_aa),#, score_ph, score_cn, score_md),
+             c("Annual average1", "Annual average1"), SIMPLIFY = FALSE)#, "Phase", "Concentraion", "Modality"))
 out = do.call(rbind, out)
 write.csv(out, "outputs/fire_comparison.csv")
