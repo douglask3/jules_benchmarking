@@ -1,11 +1,15 @@
-openMod <- function(mod, dir, varName, years, modScale, ..., stream = NULL, levels = 1, layer = NULL) {
+openMod <- function(mod, dir, varName, years, modScale, ..., stream = NULL, levels = 1, layer = NULL, exName = '') {
     
     if (!exists("extent") || is.null(extent)) extent = c(-180, 180, -90, 90)
     if (is.list(levels)) tLayers = paste(sapply(levels, paste0, collapse = '_'), collapse = '-')
         else tLayers = range(levels)
-    tempFile = paste(c('temp/', paste(strsplit(mod, '/')[[1]], collapse = '_'),
-                     varName, range(years), tLayers, ..., extent, modScale, '.nc'),
-                     collapse = '-')
+    tempFile = try(paste(c('temp/', paste(strsplit(mod, '/')[[1]], collapse = '_'),
+                     varName, range(years), tLayers, exName,..., extent, modScale, '.nc'),
+                     collapse = '-'))
+    if (class(tempFile) == "try-error") 
+        tempFile = try(paste(c('temp/', paste(strsplit(mod, '/')[[1]], collapse = '_'),
+                             varName, range(years), tLayers, exName, extent, modScale, '.nc'),
+                             collapse = '-'))
     cat("\nopening:", mod)
     cat("\n\tinto:", tempFile, "\n")
     
