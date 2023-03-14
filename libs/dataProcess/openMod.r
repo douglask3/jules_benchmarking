@@ -36,7 +36,7 @@ openMod <- function(mod, dir, varName, years, modScale, ..., stream = NULL, leve
         openVar <- function(varName) {
             openLvs <- function(level) {
                 dat = layer.apply(files, process.jules.file, level, varName)
-            
+                
                 dat = datConvert(dat, modScale, ...)
                 dat = convert_pacific_centric_2_regular(dat)
                 if (any(extent != c(-180, 180, -90, 90))) dat = crop(dat, extent)
@@ -48,8 +48,9 @@ openMod <- function(mod, dir, varName, years, modScale, ..., stream = NULL, leve
         }
         dati = lapply(varNames, openVar)
         dat = dati[[1]]
-        if (length(dati) > 1) for (d in dat[-1]) dat = dat + d
         
+        if (length(dati) > 1) for (d in dati[-1]) dat = dat + d
+        #browser()
         dat = writeRaster(dat, file = tempFile, overwrite = TRUE)
     }
     if (!is.null(layer)) dat = dat[[layer]]

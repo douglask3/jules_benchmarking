@@ -3,13 +3,19 @@ source("cfg.r")
 dir = '../jules_outputs/'
 
 mods = c('u-bi607_HIST_new_annual')
-varName = 'veg_c_fire_emission_gb;burnt_carbon_dpm;burnt_carbon_rpm'
-varName = "fire_em_CO2_gb"
-modScale = 1#60*60*24*360
 
+dir = "/hpc/data/d05/cburton/jules_output/"
+isimip_mods = c("GFDL-ESM2M", "HADGEM2-ES/", "IPSL-CM5A-LR", "MIROC5")
+mods = c(paste0('u-cf137/', isimip_mods))
+
+varName = 'veg_c_fire_emission_gb;burnt_carbon_dpm;burnt_carbon_rpm'
+#varName = "fire_em_CO2_gb"
+modScale = 1/(30*24*60*60)#60*60*24*360
+
+stream = '.ilamb.'
 
 extent = c(-90, -30, -60, 15)
-#extent = c(-180, 180, -90, 90)
+extent = c(-180, 180, -90, 90)
 
 obss = paste0("../fireMIPbenchmarking/data/benchmarkData/",
               c("GFAS.nc"))
@@ -53,11 +59,11 @@ limits_modal = c(1, 1.1, 1.2, 1.5, 2)
 dcols_modal = c('#8e0152','#c51b7d','#de77ae','#f1b6da','#fde0ef','#f7f7f7','#e6f5d0','#b8e186','#7fbc41','#4d9221','#276419')
 dlimits_modal = c(-1, -0.5, -0.2, -0.1, 0.1, 0.2, 0.5, 1)
 
-score_aa = runComparison(mods, obss, 'figs/fire_emissions_aa.png', 
+score_aa = runComparison(mods, obss, 'figs/fire_emissions_aa.png', stream = stream, 
                                cols_aa, limits_aa, dcols_aa, dlimits_aa, TRUE)
 
 score_tC = runComparison(mods, obss, 'figs/fire_emission_tC.png',
-                              cols_tr, limits_tr, dcols_tr, dlimits_tr, 
+                              cols_tr, limits_tr, dcols_tr, dlimits_tr, stream = stream,
                               FALSE, TRUE, trendTransFUN = NULL, extend_min = TRUE)
 
 out = mapply(function(i, j) cbind(j, rownames(i), round(i,2)),

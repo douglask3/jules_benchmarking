@@ -25,6 +25,7 @@ runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits,
     
     modsEG = mods[[1]][[1]][[1]]
     mods = lapply(mods, function(mod) lapply(mod, function(m) raster::resample(m, modsEG)))
+    
     obs_names = names(obss) #sapply(obss, filename.noPath, TRUE)
     
     obss = mapply(openObs, obss, obsLayers, obsScale,
@@ -74,7 +75,9 @@ runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits,
             sc = try(score(scores), silent = TRUE)
             if ( class(sc) == "try-error") scores = scores[[1]] else scores = sc
         }
-        null = nullFUN(matrix(obs[!is.na(obs)]), n = 5)
+        obsN = obs[!is.na(obs[[1]])]
+        if (!is.matrix(obsN)) obsN = matrix(obsN) 
+        null = nullFUN(obsN, n = 5)
         
         null = c(summary(null)[1:2], summary(null)[3] + c(-1, 1) * summary(null)[4])
         if (length(scores) == 1) out = t(c(null, scores))
@@ -107,5 +110,7 @@ runComparison <- function(mods, obss, fname, cols, limits, dcols, dlimits,
             
     colnames(scoreO) = c("Median null", "Mean null", "RR null lower", "RR null upper",
                          mods_names)
+
+    browser()
     return(scoreO)
 }

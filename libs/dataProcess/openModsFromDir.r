@@ -8,6 +8,6 @@ openModsFromDir <- function(dirs, years, ModLevels,
     }
     
     mods = lapply(dirs, function(dir) list.dirs(dir, full.names = FALSE)[-1])
-    mod = mapply(openMods, dirs, mods, SIMPLIFY = FALSE)
+    mod = mapply(openMods, dirs, mods[[1]], SIMPLIFY = FALSE)
     return(list(mods, mod))
 }

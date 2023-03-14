@@ -3,7 +3,7 @@ source("cfg.r")
 
 mod_dirs = c("/hpc/data/d01/hadcam/jules_output/", "/hpc/data/d05/cburton/jules_output/")
 
-mods = c('ALL_u-bk886_isimip_0p5deg_origsoil_dailytrif/', 'u-cf137_TEST-LowMort/')
+mods = c('ALL_u-bk886_isimip_0p5deg_origsoil_dailytrif/', 'u-cf137/')
 isimip_mods = c("GFDL-ESM2M", "HADGEM2-ES", "IPSL-CM5A-LR", "MIROC5")
 
 mods = paste0(rep(mods, each = 4), isimip_mods, '/')
@@ -58,6 +58,13 @@ score_cciWD = runComparison(mods, obss, 'figs/vegCover_aa.png',
                          FUN = MM, nullFUN = null.MM,
                          cols_aa, limits_aa, dcols_aa, dlimits_aa, cover = TRUE)
 
+obsLayers = list(list(c(5), c(1:4, 8)))
+score_cciSH = runComparison(mods, obss, 'figs/vegCover_aa.png', 
+                         ModLevels = list(c(12:13), c(1:11, 16)),
+                         mod_dirs = mod_dirs, stream = stream,
+                         FUN = MM, nullFUN = null.MM,
+                         cols_aa, limits_aa, dcols_aa, dlimits_aa, cover = TRUE)
+
 obsLayers = list(list(c(3:4), c(1:2, 5, 8)))
 score_cciGS = runComparison(mods, obss, 'figs/vegCover_aa.png', 
                          ModLevels = list(c(6:11), c(1:5,12:13, 16)),
@@ -96,9 +103,9 @@ score_vcfWD = runComparison(mods, obss, 'figs/vegCover_aa.png',
 
 
 out = mapply(function(i, j) cbind(j, rownames(i), round(i,2)),
-             list(score_cciLF, score_cciTR, score_cciWD, score_cciGS, score_cciBG, 
+             list(score_cciTR, score_cciWD, score_cciSH, score_cciGS, score_cciBG, 
                   score_vcfLF, score_vcfWD),
-             c("CCI Life Form", "CCI Tree", "CCI Wood", "CCI Grass", "CCI Bare",
+             c( "CCI Tree", "CCI Wood", "CCI Shrub", "CCI Grass", "CCI Bare",
                "VCF Life", "VCF Wood"), SIMPLIFY = FALSE)
 out = do.call(rbind, out)
-write.csv(out, "outputs/cover_comparison_global.csv")
+write.csv(out, "outputs/cover_comparison_global-shrub.csv")
