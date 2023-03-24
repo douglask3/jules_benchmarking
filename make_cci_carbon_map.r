@@ -59,57 +59,72 @@ regridFile <- function(file) {
                 if (file.exists(tfile_nc)) return(brick(tfile_nc))
             }
         }
-        if (file.exists(tfile_nc)) {
-            write_temp_text_file(tfile, tfile_nc)
-            return()
-        }
         
         cut_extent = c(x, x+xdiff, y, y+ydiff)  
         
         mu = terra::crop(mu, cut_extent)
-        
+        if (is.na(maxValue(mu)) || maxValue(mu) == 0) {
+             write_temp_text_file(tfile, "empty")
+            return()
+        }
+            
         print("yay")
         sigma = terra::crop(sigma, cut_extent)
-        test = (mu>0)[]
-        test[is.na(test)] = FALSE
-        ntest = sum(test)
+        
         mu_boot = mu
-        mu_agg = terra::resample(mu_boot, egRaster) 
-        #AR = raster::area(mu)[test]
+        
+        egRasteri = raster::crop(egRaster, extent(mu) + c(-1, 1, -1, 1))
+        mu_agg = terra::resample(mu_boot, egRasteri) 
+        
         doBoot <- function(id) {
             print(id)
-            mu_boot[test] = sigma[test] * rnorm(ntest, 0, 1)            
-            boot = mu_agg + terra::resample(mu_boot, egRaster) 
+            mu_boot = sigma* rnorm(ncell(sigma), 0, 1)            
+            boot = mu_agg + terra::resample(mu_boot, egRasteri) 
             boot[boot<0] = 0
             return(boot)
         }
         out = layer.apply(1:nboots, doBoot) * egArea * 100
+        
         out = writeRaster(out, file = tfile_nc, overwrite = TRUE)
         write_temp_text_file(tfile, tfile_nc)
         return(out)        
     }
 
     
-    combine_all_ens <- function(outs) {
+    combine_all_ens <- function(outs, resam = TRUE) {
         combine_ens <- function(i) {
             print(i)
-            ens = layer.apply(outs, function(out) out[[min(nlayers(out), i)]])
-            sum(ens, na.rm = TRUE)
+            
+            selectResample <- function(out) {
+                out = out[[min(nlayers(out), i)]]
+                if (resam) out = raster::resample(out, egRaster)
+                out
+            }
+            ens = layer.apply(outs, selectResample)
+            
+            sum(ens/egArea, na.rm = TRUE)
         }
         layer.apply(1:max(sapply(outs, nlayers)), combine_ens)
     }
+
+    nn <<- 0
     applyOverY <- function(y) {
         
         tfile = paste(tfile0, ncuts, nboots,'ymerge', y, fileID, '.nc', sep = '-')
         print(tfile)
-        if (file.exists(tfile)) return( brick(tfile))
         
+        if (file.exists(tfile)) return( brick(tfile))
+        #nn <<- nn + 1
+        #print(nn)
+        #if (nn < 15) return() 
+        return()
         lock_file = paste(tfile0, 'lock', y, fileID, '.txt', sep = '-')
         
         if (file.exists(lock_file)) return('locked')
         file.create(lock_file)
        
         out = lapply(xs, regrid4cut, y)
+        #return()
         out = unlist(out)
         if (is.null(out))  out = egRaster
             else out = combine_all_ens(out)
@@ -120,10 +135,11 @@ regridFile <- function(file) {
     }
     
     outs = lapply(rev(ys), applyOverY)
+    
     if (any(sapply(outs, function(i) is.character(i)))) stop("some locked files")
     outs = outs0 = outs[!sapply(outs, is.null)]
     
-    outs = combine_all_ens(outs)
+    outs = combine_all_ens(outs, FALSE)
     browser()    
 }
 
