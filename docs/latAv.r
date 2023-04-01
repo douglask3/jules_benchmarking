@@ -125,20 +125,36 @@ plotModObs <- function(obs, obsName, obsLayers, ModLevels, years, cols, ...,
     c(mods, modNF):= FUN(dirs[1], years, ModLevels, extent)
     c(mods, modF):= FUN(dirs[2], years, ModLevels, extent) 
     mod = list(modNF, modF)
-     
+    
     obs = raster::resample(obs, mod[[1]][[1]])
     
-    modBA = lapply(mods[[1]], openMod, dirs[2],'burnt_area_gb', 2001:2005, 1, extent = extent, 
+    modBA = lapply(mods[[1]], openMod, dirs[2],'burnt_area_gb', 2001:2020, 1, extent = extent, 
                    stream = 'ilamb', TRUE)
-    
+   
     obsBA = openObs(burntAreaFile, 1:12, 1, modEG = modBA[[1]], TRUE); cat("\n")
      
     plotFUN(mod, modBA, mods, obs, obsBA, obsName, cols, ...)
+
+    forMod <- function(rs) {
+        rs = rs / sum(rs)
+        MMing <- function(i) {
+            y = rs[[i]]
+            x = obs[[i]]
+            itmeize <- function(r) addLayer(r, 1-r)
+            rarea = area(y)
+            Yarea = sum((y * rarea)[], na.rm = TRUE)
+            c(Yarea, score(MM(itmeize(y), itmeize(x), w = rarea)))
+        }
+        out = sapply(1:4, MMing)
+    }
+    out = lapply(mod, lapply, forMod)
+    
 }
 
 plot.latAv <- function(mod, modBA, mods, obs, obsBA, obsName, cols, axis, ...) {
     plot.new()
-    legend("center", col = cols, legend = names(cols), pch = 19, pt.cex = 3, bty = 'n',                     horiz = TRUE)
+    legend("center", col = rev(cols), legend = rev(names(cols)), pch = 19, pt.cex = 3, 
+           bty = 'n', horiz = TRUE)
     
     lats = yFromCell(mod[[1]][[1]], 1:length(mod[[1]][[1]][[1]]))
     x = sort(unique(lats))
@@ -148,7 +164,7 @@ plot.latAv <- function(mod, modBA, mods, obs, obsBA, obsName, cols, axis, ...) {
     doPlot.latAv(x, lats, mod[[1]], NULL, sec2yr, cols = colsT, add = TRUE, ...)
     mtext("Model without fire", side = 3, line = -2, adj = 0.9)
     
-    axis(1, at = yat)
+    axis(3, at = yat)
     axis(2, at = xat)  
     axis(4, at = xat, labels = rep('', length(xat))) 
     mtext(side = 2, 'Latitude', line = 2) 
@@ -158,17 +174,17 @@ plot.latAv <- function(mod, modBA, mods, obs, obsBA, obsName, cols, axis, ...) {
     doPlot.latAv(x, lats, mod[[2]], modBA, sec2yr, cols = colsT,  add = TRUE,  ...)
     mtext("Model with fire", side = 3, line = -2, adj = 0.9)
     
-    axis(1, at = yat)
-    axis(3, at = seq(0, 100, 20), labels =seq(0, 100, 20)/5)
+    axis(3, at = yat)
+    axis(1, at = seq(0, 100, 20), labels =seq(0, 100, 20)/5)
     axis(2, at = xat, labels = rep('', length(xat))) 
     axis(4, at = xat, labels = rep('', length(xat))) 
-    mtext(side = 1, 'Cover (%)', line  = 2.5)
-    mtext(side = 3, 'Burnt area (%)', line  = 2.3)
+    mtext(side = 3, 'Vegetation cover (%)', line  = 2.5)
+    mtext(side = 1, 'Burnt area (%)', line  = 2.3)
         
     doPlot.latAv(x, lats, list(obs), list(obsBA), 12, cols = cols, ...) 
     mtext(obsName, side = 3, line = -2, adj = 0.9)
-    axis(1, at = yat)
-    axis(3, at = seq(0, 100, 20), labels =seq(0, 100, 20)/5)
+    axis(3, at = yat)
+    axis(1, at = seq(0, 100, 20), labels =seq(0, 100, 20)/5)
     axis(2, at = xat, labels = rep('', length(xat))) 
     axis(4, at = xat) 
     mtext(side = 4, 'Latitude', line = 2)
@@ -178,13 +194,13 @@ png("figs/ISIMIP_latAV.png", height = 5, width = 9, units = 'in', res = 300)#
     layout(rbind(2:4, 1), heights = c(1, 0.2))
     par( mar = c(3, 0.75, 1.5, 0.75), oma = c(0.2, 3.5, 3.5, 3.5))
     
-    mapply(plotModObs, obss, names(obss),  obsLayers, ModLevels, years_in, cols = cols,
+    outs = mapply(plotModObs, obss, names(obss),  obsLayers, ModLevels, years_in, cols = cols,
           axis = axisS, MoreArgs = list(plotFUN = plot.latAv))
    
     #mtext(outer = TRUE, side = 1, 'Latitude', line = -3)
 dev.off()
 }
-
+browser()
 regionMask = raster('data/biomAssigned.nc')
 regionMask[is.na(regionMask)] = 0
 plot.vegMix <- function(mod, modBA, mods, obs, obsBA, obsName, cols, axis, ...) {
