@@ -10,14 +10,15 @@ dir_our = 'outputs/carboncci/'
 files = list.files(dir_in)
 
 ncuts = 72
-nboots = 50
+nboots = 10
 
 egRaster = raster('data/GFED4s_burnt_area.nc')
 egRaster[] = 0.0
 egArea = raster::area(egRaster)
-tfile0 = 'temp/make_cci_carbon_map-cut'
+tfile0 = 'temp/make_cci_carbon_map-2-cut'
 
 write_temp_text_file <- function(tfile, txt) {
+    if (file.exists(tfile)) unlink(tfile)
     fileConn = file(tfile)
     writeLines(c(txt), fileConn)
     close(fileConn)
@@ -33,7 +34,7 @@ regridFile <- function(file) {
     mu = raster(file_in, varname = variables[1])
     sigma = raster(file_in, varname = variables[2])
 
-    extent = extent(mu)
+    extent = extent(egRaster)
 
     cut_extents <- function(i, j) {
         out = seq(extent[i], extent[j], length.out = ncuts+1)
@@ -44,38 +45,60 @@ regridFile <- function(file) {
     xdiff = diff(xs[1:2]); ydiff = diff(ys[1:2])
     regrid4cut <- function(x, y) {
         
-        tfile = paste(tfile0, ncuts, nboots, x, y, xdiff, ydiff,
+        tfile = paste(tfile0, ncuts, x, y, xdiff, ydiff,
                       fileID, '.txt', sep = '-')
         print(file_in)
         print(x)
         print(y)
         tfile_nc = paste(tfile0, 'nc', ncuts, nboots, x, y, xdiff, ydiff,
                          fileID, '.nc', sep = '-')
+        #tfile_nc_area = paste(tfile0, 'nc', ncuts, nboots, x, y, xdiff, ydiff,
+        #                 fileID, '-area.nc', sep = '-')
+        
+        nboots1 = nboots
+        outs0 = NULL
         if (file.exists(tfile)) {
             info = read.table(tfile, stringsAsFactors=FALSE)
             if (info[1,1] == "empty") {
                 return()        
             } else {
-                if (file.exists(tfile_nc)) return(brick(tfile_nc))
+                if (file.exists(tfile_nc)) {
+                    return(brick(tfile_nc))
+                } else {
+                    tfile0 = file.exists(info[1,1])
+                    if (tfile0) {
+                        outs0 = brick(info[1,1])
+                        nboots0 = nlayers(outs0) - 1
+                        if (nboots0 > nboots) {
+                            return(outs0[[1:nboots]])
+                        } else {
+                            nboots1 = nboots - nboots0
+                        }
+                    }
+                }
             }
         }
         
         cut_extent = c(x, x+xdiff, y, y+ydiff)  
         
-        mu = terra::crop(mu, cut_extent)
-        if (is.na(maxValue(mu)) || maxValue(mu) == 0) {
-             write_temp_text_file(tfile, "empty")
+        mu = try(terra::crop(mu, cut_extent), silent = TRUE)
+        if (class(mu) == "try-error" || is.na(maxValue(mu)) || maxValue(mu) == 0) {
+            write_temp_text_file(tfile, "empty")
             return()
         }
-            
-        print("yay")
+        egRasteri = raster::crop(egRaster, cut_extent)
+        
+        rarea = mu
+        rarea[!is.na(rarea)] = 1
+        rarea = terra::extend(rarea, egRasteri)
+        rarea[is.na(rarea)] = 0
+        rarea = terra::resample(rarea, egRasteri) 
+        #rarea = writeRaster(rarea, file = tfile_nc_area, overwrite = TRUE)
+        
+        mu_agg = terra::resample(mu, egRasteri) 
         sigma = terra::crop(sigma, cut_extent)
         
-        mu_boot = mu
-        
-        egRasteri = raster::crop(egRaster, extent(mu) + c(-1, 1, -1, 1))
-        mu_agg = terra::resample(mu_boot, egRasteri) 
-        
+        print("yay")
         doBoot <- function(id) {
             print(id)
             mu_boot = sigma* rnorm(ncell(sigma), 0, 1)            
@@ -83,64 +106,92 @@ regridFile <- function(file) {
             boot[boot<0] = 0
             return(boot)
         }
-        out = layer.apply(1:nboots, doBoot) * egArea * 100
-        
+        out = layer.apply(1:nboots1, doBoot)
+        out = addLayer(rarea, out)
+        if (!is.null(outs0))out = addLayer(out, outs0[[-1]])
         out = writeRaster(out, file = tfile_nc, overwrite = TRUE)
-        write_temp_text_file(tfile, tfile_nc)
+        write_temp_text_file(tfile, c(tfile_nc, nboots))
+        if (!is.null(outs0)) unlink(info[1,1])
         return(out)        
     }
 
     
-    combine_all_ens <- function(outs, resam = TRUE) {
-        combine_ens <- function(i) {
-            print(i)
+    combine_all_ens <- function(outs, resam = TRUE, byArea = TRUE) {
+
+        selectResample <- function(out, i, byArea = TRUE) {
             
-            selectResample <- function(out) {
-                out = out[[min(nlayers(out), i)]]
-                if (resam) out = raster::resample(out, egRaster)
-                out
-            }
-            ens = layer.apply(outs, selectResample)
-            
-            sum(ens/egArea, na.rm = TRUE)
+            if (byArea) rarea = out[[1]]
+            out = out[[min(nlayers(out), i)]] 
+            if (byArea) out = out * rarea
+            if (resam) out = raster::resample(out, egRaster)
+            out
         }
-        layer.apply(1:max(sapply(outs, nlayers)), combine_ens)
+        combine_ens <- function(i, ...) {
+            print(i)
+            ens = mapply(selectResample, outs, i, ...)
+            ens = layer.apply(ens, function(i) i)
+            sum(ens, na.rm = TRUE)
+        }
+        rarea = combine_ens(1, byArea = FALSE)
+        out = layer.apply(2:max(sapply(outs, nlayers)), combine_ens, byArea = byArea)
+        out = addLayer(rarea, out)
+        return(out)
+        
     }
 
     nn <<- 0
-    applyOverY <- function(y) {
-        
+    applyOverY <- function(y) {        
         tfile = paste(tfile0, ncuts, nboots,'ymerge', y, fileID, '.nc', sep = '-')
         print(tfile)
         
         if (file.exists(tfile)) return( brick(tfile))
-        #nn <<- nn + 1
-        #print(nn)
-        #if (nn < 15) return() 
-        return()
+        #return()
         lock_file = paste(tfile0, 'lock', y, fileID, '.txt', sep = '-')
         
         if (file.exists(lock_file)) return('locked')
         file.create(lock_file)
        
-        out = lapply(xs, regrid4cut, y)
-        #return()
+        out  = lapply(xs, regrid4cut, y)
         out = unlist(out)
-        if (is.null(out))  out = egRaster
+        
+        if (is.null(out))  out = addLayer(egRaster, egRaster)
             else out = combine_all_ens(out)
-        #return(out)
+        
         writeRaster(out, file = tfile, overwrite = TRUE)
         
         return(out)
     }
     
+    file_out = paste0('outputs/',
+                      paste(strsplit(fileID, '100m')[[1]], collapse = '0.5Degree'), 
+                      '-ensembles-', nboots, '.nc')
+
+    if (file.exists(file_out)) return(brick(file_out))
     outs = lapply(rev(ys), applyOverY)
     
     if (any(sapply(outs, function(i) is.character(i)))) stop("some locked files")
     outs = outs0 = outs[!sapply(outs, is.null)]
     
-    outs = combine_all_ens(outs, FALSE)
-    browser()    
+    outs = combine_all_ens(outs, FALSE, FALSE)
+    writeRaster(outs, file = file_out, overwrite = TRUE)  
 }
 
-lapply(files, regridFile)
+outs = lapply(files, regridFile)
+outs = outs[-1]
+
+Dboots = 100
+
+r1 = sample(2:nlayers(outs[[1]]), Dboots, replace = TRUE)
+r2 = sample(2:nlayers(outs[[2]]), Dboots, replace = TRUE)
+
+dout = outs[[2]][[r2]] - outs[[1]][[r1]]
+dout = addLayer(sqrt(outs[[1]][[1]] * outs[[2]][[1]]), dout)
+findYr <- function(i)
+    strsplit(strsplit(filename(outs[[i]]), 'Degree-')[[1]][2], '-')[[1]][1]
+
+yrs = sapply(2:1, findYr)
+
+file_out = paste0(strsplit(filename(outs[[1]]), yrs[2])[[1]], 
+                  collapse = paste0(c('CHANGE', yrs), collapse = '-' ))
+
+writeRaster(dout, file = file_out, overwrite = TRUE)
