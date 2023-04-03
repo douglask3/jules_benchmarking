@@ -142,34 +142,42 @@ plotMaps <- function(mods, obss, obsNames, obsStart, scale = 1, units = '%', reg
     heights =c(0.1, rep(1, lmods +1), 0.8, 0.1)
     widths =c(0.1, rep(1, ncol(lmat)-1))    
     
-    png(paste0("figs/", varname, '_', dir_lab, "_isimip2b_maps.png"), height = sum(heights)*1.2,
+    png(paste0("figs/", varname, '_', dir_lab, "regioanl_is_", regional, "_isimip2b_maps.png"), height = sum(heights)*1.2,
         width = sum(widths)*2.5, res = 300, units = 'in')
     
     layout(lmat, heights = heights, widths = widths)    
     par(mar = rep(0, 4))
 
-    if (!regional) {
-        if (readyStiched) {
-            absPlot_fun <- function(i) scale*mean(i[[1]][[1]], na.rm = TRUE)
-            diff_from_obs <- function(obs, mod) 
-                lapply(mod, function(i) mean(i[[1]]) - mean(obs[[1]][[1]]))
-                       
-            mods_diff = unlist(mapply(diff_from_obs, obss, mods, SIMPLIFY = FALSE))
-        } else {
-            diff_from_obs <- function(obs, stYr) {
-                lys  =  1:length(obs[[2]][[1]]) + stYr - mod_start
-                lapply(mods, function(i)
-                                scale*(mean(i[[1]][[lys]], na.rm = TRUE) - mean(obs[[1]]) ))
-        
-            }
-            absPlot_fun <- function(i) scale * mean(i[[1]], na.rm = TRUE)
-            mods_diff = unlist(mapply(diff_from_obs, obss, obsStart, SIMPLIFY = FALSE))
+    if (regional) {
+        meanFUN <- function(r, layers = 1:nlayers(r[[1]]), ...) {
+            r[[1]] = r[[1]][[1]]
+            for (reg in 1:14) 
+                r[[1]][regions == reg] = mean(r[[2]][[reg+1]])/regionArea[reg]  
+
+            return(r[[1]])
         }
-        mods_plot = lapply(mods, absPlot_fun)         
-        obss_plot = lapply(obss, absPlot_fun)
-        
+    } else {
+        meanFUN <- function(r, layers = 1:nlayers(r[[1]]), ...) mean(r[[1]][[layers]], ...)
     }
+    if (readyStiched) {
+        absPlot_fun <- function(i) scale*meanFUN(i[[1]], na.rm = TRUE)
+        diff_from_obs <- function(obs, mod) 
+            lapply(mod, function(i) meanFUN(i) - meanFUN(obs[[1]]))
+                   
+        mods_diff = unlist(mapply(diff_from_obs, obss, mods, SIMPLIFY = FALSE))
+    } else {
+        diff_from_obs <- function(obs, stYr) {
+            lys  =  1:length(obs[[2]][[1]]) + stYr - mod_start
+            lapply(mods, function(i)
+                            scale*(meanFUN(i, lys, na.rm = TRUE) - meanFUN(obs) ))
     
+        }
+        absPlot_fun <- function(i) scale * meanFUN(i, na.rm = TRUE)
+        mods_diff = unlist(mapply(diff_from_obs, obss, obsStart, SIMPLIFY = FALSE))
+    }
+    mods_plot = lapply(mods, absPlot_fun)         
+    obss_plot = lapply(obss, absPlot_fun)
+    browser()
     mapply(plotMap, obss_plot, obsNames, MoreArgs = list(cols, limits, side = 3, line = -0.5))
     mapply(plotMap, mods_plot, models, 
            MoreArgs = list(cols, limits, side = 2, line = -0.5)) 
@@ -196,8 +204,9 @@ RUN <- function() {
     mapply(output4region, 0:14, c('GLOB', region_names), MoreArgs = list(mods, obss))
 
     letterN <<- 0
+    for (reg in c(T, F)) 
     plotMaps(mods, obss[plotObs],
-             names(obs_files)[plotObs], obs_start[plotObs], plotScale, regional = FALSE)
+             names(obs_files)[plotObs], obs_start[plotObs], plotScale, regional = reg)
     return(list(obss, mods, obs_start, mod_start))
 }
 
@@ -240,7 +249,7 @@ limits = c(0, 1, 2, 5, 10, 20, 40, 60)
 dlimits = c(-20, -10,-5, -2, -1,  1, 2, 5, 10, 20)
 maxLab = minLab = ''
 
-#burnt_area = RUN()
+burnt_area = RUN()
 
 #########################
 ##Tree Cover          ##
@@ -269,7 +278,7 @@ dlimits = seq(-40, 40, by = 10)
 maxLab = 100
 minLab = 0
 
-#trees_on = RUN()
+trees_on = RUN()
 
 varname = 'tallTrees'
 #tallTrees_on = RUN()
