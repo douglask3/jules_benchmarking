@@ -74,7 +74,7 @@ def conpare_gradients(beta1, beta2, ls = 'solid', color = 'red'):
 
     direction_sim = firectionFUN(beta1, beta2)
     direction_obs = firectionFUN(beta1, beta1)
-    
+     
     return prob#, direction_sim, direction_obs
 
 
@@ -100,6 +100,7 @@ def for_timeSeries(cname, years, dat, color, lineS, regionID, variable):
         y0 = dat[1,]
     else:
         print(tfile)
+        if len(y) == 1: return None
         try:
             traces = run_regression(x - np.min(x), np.log(y + 0.000000001)).posterior#["beta"].values
         except:
@@ -152,10 +153,12 @@ def forRegion(time_series_dir, file, variable, varname, units, fig):
     #ax.yaxis.set_minor_formatter(ScalarFormatter())
 
     Obs = [beta for beta, name in zip(betas, dat.columns[2:]) if name.startswith('Obs')]
-
-    n_samples = np.array([i[1] for i in Obs])
-    n_samples = np.round(4*n_itertations* n_samples/ np.sum(n_samples))
-
+    Obs = [x for x in Obs if x is not None] 
+    try:
+        n_samples = np.array([i[1] for i in Obs])
+        n_samples = np.round(4*n_itertations* n_samples/ np.sum(n_samples))
+    except:
+        browser()
     def selectN(samples, nsamples):
         sampl = samples[0].flatten()
         sampl = sampl[np.random.choice(len(sampl), size=int(nsamples), replace=True)]
@@ -171,11 +174,12 @@ def forRegion(time_series_dir, file, variable, varname, units, fig):
     if file[0:4] == 'MIDE' or file[0:4] == 'NHAF': plt.ylabel("Probablity")
                          
     scores = np.array(conpare_gradients(ObsS, np.zeros(n_itertations), color = 'black'))
-    
+    grad_range = np.percentile(ObsS, [5, 95])
     for Sim, ls in zip(Sims, ['solid', 'dotted', 'dashed', 'dashdot', 'solid']):
         scores = np.append(scores, conpare_gradients(ObsS, Sim, ls)) 
-        
-    return(scores)
+        grad_range = np.append(grad_range, np.percentile(Sim, [5, 95]))
+    
+    return scores, grad_range
 
 
 def run_for_variable(variable, time_series_dir, varname, units): 
@@ -191,16 +195,22 @@ def run_for_variable(variable, time_series_dir, varname, units):
     plt.rcParams['axes.titley'] = 0.0    # y is in axes-relative coordinates.
     plt.rcParams['axes.titlepad'] = 10
     outs = [forRegion(time_series_dir, file, variable, varname, units, fig) for file in files]
-    pd.DataFrame(outs).to_csv('outputs/' + variable + '_isimip2b_regional_trend_eval.csv')
+    
+    probs = pd.DataFrame([i[0] for i in outs])
+    grads = pd.DataFrame([i[1] for i in outs])
+
+    pd.DataFrame(probs).to_csv('outputs/' + variable + 'probs_isimip2b_regional_trend_eval.csv')
+    pd.DataFrame(grads).to_csv('outputs/' + variable + 'grads_isimip2b_regional_trend_eval.csv')
+
     plt.savefig("figs/compare_" + variable + "_trends.png", dpi = 300)
 
-#run_for_variable("burnt_area", 'outputs/burnt_area_obs_isimip2b/', "Burnt Area", "$1000 km^2$")
+run_for_variable("burnt_area", 'outputs/burnt_area_obs_isimip2b/', "Burnt Area", "$1000 km^2$")
 
-#run_for_variable("tree_cover_fireOff", 'outputs/trees_obs_isimip2b_fireOff/', "Tree Cover", "$1000 km^2$")
-#run_for_variable("tree_cover_fireOn", 'outputs/trees_obs_isimip2b_fireOn/', "Tree Cover", "$1000 km^2$")
+run_for_variable("tree_cover_fireOff", 'outputs/trees_obs_isimip2b_fireOff/', "Tree Cover", "$1000 km^2$")
+run_for_variable("tree_cover_fireOn", 'outputs/trees_obs_isimip2b_fireOn/', "Tree Cover", "$1000 km^2$")
 
-#run_for_variable("tallTree_cover_fireOff", 'outputs/tallTrees_obs_isimip2b_fireOff/', "Tall Tree Cover", "$1000 km^2$")
-#run_for_variable("tallTree_cover_fireOn", 'outputs/tallTrees_obs_isimip2b_fireOn/', "Tall Tree Cover", "$1000 km^2$")
+run_for_variable("tallTree_cover_fireOff", 'outputs/tallTrees_obs_isimip2b_fireOff/', "Tall Tree Cover", "$1000 km^2$")
+run_for_variable("tallTree_cover_fireOn", 'outputs/tallTrees_obs_isimip2b_fireOn/', "Tall Tree Cover", "$1000 km^2$")
 
 run_for_variable("fire_emissions", "outputs/fire_emissions_veg_obs_isimip2b/", "Fire Emission", "some units")
 
